@@ -94,6 +94,46 @@ void UCompanyNameIndexWidget::SaveDownListStocksBP(const FString& codeOrName, co
 
 }
 
+void UCompanyNameIndexWidget::SaveToRecentListPathBP(const FString& codeOrName){
+	FString fileContent;
+	FString recentFilename = FPaths::ProjectDir() + FString("Saved/StockDatas/RecentStockList.json");
+	if (FFileHelper::LoadFileToString(fileContent, *recentFilename)) {
+		TSharedPtr<FJsonObject> rootObj;
+		TSharedRef<TJsonReader<>> jsonReader = TJsonReaderFactory<>::Create(fileContent);
+		if (FJsonSerializer::Deserialize(jsonReader, rootObj) && rootObj.IsValid()) {
+			TArray< TSharedPtr <FJsonValue>> recentStocks = rootObj->GetArrayField(TEXT("StockList"));
+			if (recentStocks.IsEmpty()) { UE_LOG(LogTemp, Error, TEXT("---------->> RecentStockList的StockList为空!")); }
+			for (int i = 0; i < recentStocks.Num(); ++i) {
+				FString stockcode, stockname;
+				recentStocks[i]->AsObject()->TryGetStringField(TEXT("CODE"), stockcode);
+				recentStocks[i]->AsObject()->TryGetStringField(TEXT("NAME"), stockname);
+				if (stockcode == codeOrName || stockname == codeOrName) {
+					recentStocks.RemoveAt(i);
+					break;
+				}
+			}
+			TSharedPtr<FJsonObject> newStockObj = MakeShareable(new FJsonObject());
+			TSharedPtr<FQTStockListRow>* sourcecodeptr = StockRowListMap_.Find(codeOrName);
+			if (sourcecodeptr) {
+				newStockObj->SetStringField(TEXT("CODE"), (*sourcecodeptr)->CODE);
+				newStockObj->SetStringField(TEXT("NAME"), (*sourcecodeptr)->NAME);
+				newStockObj->SetStringField(TEXT("CODEMARK"), (*sourcecodeptr)->CODEMARK);
+				newStockObj->SetStringField(TEXT("NAMECODE"), (*sourcecodeptr)->NAMECODE);
+			}
+			recentStocks.Add(MakeShareable(new FJsonValueObject(newStockObj)));
+			rootObj->SetArrayField(TEXT("StockList"), recentStocks);
+			FString outputString;
+			TSharedRef<TJsonWriter<>> jsonWriter = TJsonWriterFactory<>::Create(&outputString);
+			if (FJsonSerializer::Serialize(rootObj.ToSharedRef(), jsonWriter)) {
+				FFileHelper::SaveStringToFile(outputString, *recentFilename);
+				UE_LOG(LogTemp, Log, TEXT("---------->> 成功保存到最近访问列表!"));
+			}
+		}
+		else UE_LOG(LogTemp, Error, TEXT("---------->> RecentStockList历史数据反序列化失败!"));
+	}
+	else UE_LOG(LogTemp, Error, TEXT("---------->> 读取RecentStockList历史失败!"));
+}
+
 void UCompanyNameIndexWidget::SavePreStockDownListDatasFromDownListWidget(const FString& savedFile){
 	if (savedFile == "RecentStockList.json" || savedFile == "Null")return;
 	TArray<FString> currentDownListDatas_JustCode;

@@ -37,6 +37,9 @@ public:
 	//保存股票数据到指定下拉列表中
 	UFUNCTION(BlueprintCallable, Category = "QT | Functions")
 	void SaveDownListStocksBP(const FString& codeOrName, const FString& filename);
+	//保存最近访问的股票数据到指定路径(每次点击搜索按钮都会存储到最近访问列表)
+	UFUNCTION(BlueprintCallable, Category = "QT | Functions")
+	void SaveToRecentListPathBP(const FString& codeOrName);
 	//保存下拉列表数据到指定路径(每次点击金色按钮都会存储上一个按钮下来菜单下的最新数据)
 	UFUNCTION(BlueprintCallable, Category = "QT | Functions")
 	void SavePreStockDownListDatasFromDownListWidget(const FString& savedFile);
@@ -51,6 +54,8 @@ public:
 	FOnIntroductionUpdate onIntroductionUpdate;
 	//根据名称或代码获取证券的检索信息(0代表股票信息,1代表基金信息,默认股票)
 	TSharedPtr<FQTStockListRow> GetFQTStockListRowByCodeOrName(FString innameorcode, int16 stockOrFund = 0);
+	UFUNCTION(BlueprintImplementableEvent, Category = "QT | Events")
+	void OnStockCodeTextCommit(const FString& stockcode);
 
 protected:
 	virtual void NativePreConstruct() override;

@@ -2,6 +2,7 @@
 #include "Components/ScrollBox.h"
 #include "StockListDownItemWidget.h"
 #include "ItemRightClickWidget.h"
+#include "CompanyNameIndexWidget.h"
 #include "Components/Overlay.h"
 #include "Blueprint/DragDropOperation.h"
 
@@ -60,9 +61,9 @@ bool UStockListDownWidget::GetCurrentDownListDatas(TArray<FString>& outListStock
 FReply UStockListDownWidget::NativeOnMouseButtonDown(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent){
 	SetAllScrollItemNoScale();
 	itemRight->SetHidden();
-	itemheight = listScrollBox_->GetChildAt(0)->GetDesiredSize().Y;
+	itemheight = listScrollBox_->GetParent()->GetChildAt(0)->GetDesiredSize().Y;
 	FVector2D screenPos = InGeometry.AbsoluteToLocal(InMouseEvent.GetScreenSpacePosition());
-	itemindex = screenPos.Y / itemheight;
+	itemindex = FMath::FloorToInt((screenPos.Y + listScrollBox_->GetScrollOffset()) / itemheight);//UE_LOG(LogTemp, Warning, TEXT("itemindex: %d"), itemindex);
 	currentSelectedItemWidget_ = listScrollBox_->GetChildAt(itemindex - 1);
 	SetAllItemOrgColor();//高亮显示之前全部重置颜色
 	if (InMouseEvent.GetEffectingButton() == EKeys::RightMouseButton && itemindex > 0) {
@@ -81,6 +82,12 @@ FReply UStockListDownWidget::NativeOnMouseButtonDown(const FGeometry& InGeometry
 	}
 	if (InMouseEvent.GetEffectingButton() == EKeys::LeftMouseButton) {
 		if (currentSelectedItemWidget_) {//高亮显示
+			if (companyNameIndexWidget && ctrlPressed) {
+				UStockListDownItemWidget* currentSelectedItem = Cast<UStockListDownItemWidget>(currentSelectedItemWidget_);
+				if (currentSelectedItem) {
+					companyNameIndexWidget->OnStockCodeTextCommit(currentSelectedItem->GetStockDataCode());
+				}
+			}
 			currentSelectedItemWidget_->SetRenderScale(FVector2D(1.05f, 1.05f));
 			Cast<UStockListDownItemWidget>(currentSelectedItemWidget_)->SetItemLightColor();
 		}
@@ -105,7 +112,7 @@ FReply UStockListDownWidget::NativeOnMouseButtonUp(const FGeometry& InGeometry, 
 
 FReply UStockListDownWidget::NativeOnMouseMove(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent){
 	if (currentSelectedItemWidget_ && startMove) {
-		floatindex = InGeometry.AbsoluteToLocal(InMouseEvent.GetScreenSpacePosition()).Y / itemheight;
+		floatindex = (InGeometry.AbsoluteToLocal(InMouseEvent.GetScreenSpacePosition()).Y + listScrollBox_->GetScrollOffset()) / itemheight;
 		if (floatindex < 1) {
 			SetScrollBoxItemIndex(currentSelectedItemWidget_, 0);
 			SetCursor(EMouseCursor::Default);
@@ -139,7 +146,7 @@ void UStockListDownWidget::NativeOnMouseEnter(const FGeometry& InGeometry, const
 void UStockListDownWidget::NativeOnMouseLeave(const FPointerEvent& InMouseEvent){
 	if (startMove) {
 		FGeometry InGeometry = GetPaintSpaceGeometry();
-		floatindex = InGeometry.AbsoluteToLocal(InMouseEvent.GetScreenSpacePosition()).Y / itemheight;
+		floatindex = (InGeometry.AbsoluteToLocal(InMouseEvent.GetScreenSpacePosition()).Y + listScrollBox_->GetScrollOffset()) / itemheight;
 		if (floatindex < 1) {
 			SetScrollBoxItemIndex(currentSelectedItemWidget_, 0);
 			SetCursor(EMouseCursor::Default);
@@ -177,6 +184,22 @@ void UStockListDownWidget::NativeOnMouseLeave(const FPointerEvent& InMouseEvent)
 	currentSelectedItemWidget_ = nullptr;
 	SetAllItemOrgColor();
 	SetAllScrollItemNoScale();
+}
+
+FReply UStockListDownWidget::NativeOnKeyDown(const FGeometry& InGeometry, const FKeyEvent& InKeyEvent){
+	if(InKeyEvent.GetKey()==EKeys::LeftControl || InKeyEvent.GetKey() == EKeys::RightControl) {
+		SetCursor(EMouseCursor::Hand);
+		ctrlPressed = true;
+	}
+	return FReply::Handled();
+}
+
+FReply UStockListDownWidget::NativeOnKeyUp(const FGeometry& InGeometry, const FKeyEvent& InKeyEvent){
+	if (InKeyEvent.GetKey() == EKeys::LeftControl || InKeyEvent.GetKey() == EKeys::RightControl) {
+		SetCursor(EMouseCursor::Default);
+		ctrlPressed = false;
+	}
+	return FReply::Handled();
 }
 
 void UStockListDownWidget::SetAllScrollItemNoScale(){
