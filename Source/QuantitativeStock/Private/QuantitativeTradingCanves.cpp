@@ -91,6 +91,27 @@ void UQuantitativeTradingCanves::OnIndicatorItemChanged(FName inIndicatorName){
 	BroadcastIndicatorValueRangeByIndicatorName(indicatorName);
 }
 
+void UQuantitativeTradingCanves::UpdateLatestDayLine(FQTStockRealTimeData inRealTimeData){
+	if (companyNameIndexWidget) {//首先更新companyNameIndexWidget里存储的最新数据和json文件
+		companyNameIndexWidget->UpdateLatestDayLine(inRealTimeData);
+	}
+	//然后更新K线图的最新数据
+	//重新计算最新数据的K线数据
+	ReCaculateAndStoreLatestDayKLine(inRealTimeData);
+	////重新采样最新数据的K线数据
+	//RefreshVisibleRows();
+	//ReSampleIndicatorName(indicatorName.ToString());
+}
+
+void UQuantitativeTradingCanves::LoadCycleSettingsFromJson_BP(const FString& inIndicatorName, int& out1, int& out2, int& out3){
+	int tempint[3];
+	LoadCycleSettingsFromJson(inIndicatorName, tempint);
+	out1 = tempint[0];
+	out2 = tempint[1];
+	out3 = tempint[2];
+	UE_LOG(LogTemp, Warning, TEXT("----->> LoadCycleSettingsFromJson_BP %s: %d,%d,%d"), *inIndicatorName, out1, out2, out3);
+}
+
 TArray<FVector2f> UQuantitativeTradingCanves::SampleDataFromCurve(UCurveVector* inVectorCrv, const FGeometry& AllottedGeometry, int dimension)const
 {
 	TArray<FVector2f> tempArray;
@@ -139,8 +160,7 @@ TArray<FVector2f> UQuantitativeTradingCanves::SampleDataFromCurve(UCurveVector* 
 	return tempArray;
 }
 
-void UQuantitativeTradingCanves::NativePreConstruct()
-{
+void UQuantitativeTradingCanves::NativePreConstruct(){
 	Super::NativePreConstruct();
 }
 
@@ -715,21 +735,6 @@ TArray<FVector2f>UQuantitativeTradingCanves::SampleDataFromDataTable() {
 	return tempArray;
 }
 
-bool UQuantitativeTradingCanves::StoreIndicatorParams(FString inSpecifyName, const int cycleInfos[3]) {
-	FString paramFilePath = FPaths::ProjectDir() + FString::Printf(TEXT("Saved/StockDatas/IndicatorParams/%s.json"), *indicatorName.ToString());
-	TSharedPtr<FJsonObject> jsonObject = MakeShareable(new FJsonObject());
-	jsonObject->SetNumberField("Cycle1", cycleInfos[0]);
-	jsonObject->SetNumberField("Cycle2", cycleInfos[1]);
-	jsonObject->SetNumberField("Cycle3", cycleInfos[2]);
-	FString outputString;
-	TSharedRef<TJsonWriter<>> writer = TJsonWriterFactory<>::Create(&outputString);
-	if (FJsonSerializer::Serialize(jsonObject.ToSharedRef(), writer)) {
-		FFileHelper::SaveStringToFile(outputString, *paramFilePath);
-		return true;
-	}
-	return false;
-}
-
 void UQuantitativeTradingCanves::CaculateAndStoreIndicators(TArray<TSharedPtr<FQTStockIndex>>& allRows) {
 	//初始化第一个交易日的MA值
 	float tempSum = 0;
@@ -937,12 +942,52 @@ void UQuantitativeTradingCanves::CaculateAndStoreIndicators(TArray<TSharedPtr<FQ
 	}
 }
 
+bool UQuantitativeTradingCanves::SaveCycleSettingsToJson(const FString& inSpecifyName, const int cycleInfos[3]){
+	FString paramFilePath = FPaths::ProjectDir() + FString::Printf(TEXT("Saved/StockDatas/IndicatorParams/%s.json"), *indicatorName.ToString());
+	TSharedPtr<FJsonObject> jsonObject = MakeShareable(new FJsonObject());
+	int cycleinfosold[3];
+	if (!LoadCycleSettingsFromJson(indicatorName.ToString(), cycleinfosold)) {
+		UE_LOG(LogTemp, Warning, TEXT("Load indicator %s params failed!!"), *indicatorName.ToString());
+		return false;
+	}
+	if (inSpecifyName == "DIF1" || inSpecifyName == "RSV"|| inSpecifyName == "RSI0" || inSpecifyName == "WR1" || inSpecifyName == "CCI" || inSpecifyName == "BIAS0" || inSpecifyName == "PDI" || inSpecifyName == "NDI" || inSpecifyName == "ADX") cycleinfosold[0] = cycleInfos[0];
+	if (inSpecifyName == "DIF2" || inSpecifyName == "K" || inSpecifyName == "ADXR") cycleinfosold[1] = cycleInfos[1];
+	if (inSpecifyName == "DEA" || inSpecifyName == "D") cycleinfosold[2] = cycleInfos[2];
+	if(inSpecifyName == "RSI1"|| inSpecifyName == "WR2"|| inSpecifyName == "BIAS1") cycleinfosold[1] = cycleInfos[0];
+	if (inSpecifyName == "RSI2"|| inSpecifyName == "BIAS2") cycleinfosold[2] = cycleInfos[0];
+	jsonObject->SetNumberField("Cycle1", cycleinfosold[0]);
+	jsonObject->SetNumberField("Cycle2", cycleinfosold[1]);
+	jsonObject->SetNumberField("Cycle3", cycleinfosold[2]);
+	FString outputString;
+	TSharedRef<TJsonWriter<>> writer = TJsonWriterFactory<>::Create(&outputString);
+	if (FJsonSerializer::Serialize(jsonObject.ToSharedRef(), writer)) {
+		return FFileHelper::SaveStringToFile(outputString, *paramFilePath);
+	}
+	return false;
+}
+
+bool UQuantitativeTradingCanves::LoadCycleSettingsFromJson(const FString& inIndicatorName, int cycleInfos[3]) {
+	FString paramFilePath = FPaths::ProjectDir() + FString::Printf(TEXT("Saved/StockDatas/IndicatorParams/%s.json"), *inIndicatorName);
+	FString inputString;
+	if (FFileHelper::LoadFileToString(inputString, *paramFilePath)) {
+		TSharedPtr<FJsonObject> jsonObject;
+		TSharedRef<TJsonReader<>> reader = TJsonReaderFactory<>::Create(inputString);
+		if (FJsonSerializer::Deserialize(reader, jsonObject) && jsonObject.IsValid()) {
+			cycleInfos[0] = jsonObject->GetIntegerField("Cycle1");
+			cycleInfos[1] = jsonObject->GetIntegerField("Cycle2");
+			cycleInfos[2] = jsonObject->GetIntegerField("Cycle3");
+			return true;
+		}
+	}
+	return false;
+}
+
 void UQuantitativeTradingCanves::ReCaculateSpecifyIndicator(FString inSpecifyName, const int cycleInfos[3]){
 	if (cycleInfos[0] < 2 || cycleInfos[1] < 2 || cycleInfos[2] < 2 ) {
 		UE_LOG(LogTemp, Warning, TEXT("Cycle days for calculating indicator %s is invalid!!"), *inSpecifyName);
 		return;
 	}
-	if (!StoreIndicatorParams(inSpecifyName, cycleInfos)) { UE_LOG(LogTemp, Warning, TEXT("Store indicator %s params failed!!"), *inSpecifyName); return; }
+	if (!SaveCycleSettingsToJson(inSpecifyName, cycleInfos)) { UE_LOG(LogTemp, Warning, TEXT("Store indicator %s params failed!!"), *inSpecifyName); return; }
 	//-----------------------------------------------------更新MACD------------------------------------------------------
 	if (inSpecifyName == "DIF1") {//---------------------------------------------------------------------------更新MACD
 		//cycleInfos[0]是DIF1的周期,cycleInfos[1]是DIF2的周期,cycleInfos[2]是DEA的周期,
@@ -1183,6 +1228,151 @@ void UQuantitativeTradingCanves::ReCaculateSpecifyIndicator(FString inSpecifyNam
 	}
 }
 
+void UQuantitativeTradingCanves::ReCaculateAndStoreLatestDayKLine(const FQTStockRealTimeData& inRealTimeData){
+	if (allStockIndexRows.Num() == 0) return;
+	TSharedPtr<FQTStockIndex>& latestRow = allStockIndexRows.Last();
+	latestRow->Open = inRealTimeData.OpenPrice;
+	latestRow->Close = inRealTimeData.LatestPrice;
+	latestRow->High = inRealTimeData.HighestPrice;
+	latestRow->Low = inRealTimeData.LowestPrice;
+	latestRow->Change = inRealTimeData.ChangeAmount;
+	latestRow->ChangeRatio = inRealTimeData.ChangeRatio;
+	latestRow->Volume = inRealTimeData.Volume;
+	latestRow->Turnover = inRealTimeData.Turnover;
+	latestRow->PriceRange = inRealTimeData.PriceRange;
+	latestRow->TurnoverRate = inRealTimeData.TurnoverRate;
+	//更新MA值
+	int i = allStockIndexRows.Num() - 1;
+	{//--------->>计算SMA
+		//计算SMA5
+		allStockIndexRows[i]->SMA5SUM = allStockIndexRows[i - 1]->SMA5SUM - allStockIndexRows[i - 5]->Close + allStockIndexRows[i]->Close;
+		allStockIndexRows[i]->SMA5 = allStockIndexRows[i]->SMA5SUM / 5.0f;
+		//--------->>计算SMA10
+		allStockIndexRows[i]->SMA10SUM = allStockIndexRows[i - 1]->SMA10SUM - allStockIndexRows[i - 10]->Close + allStockIndexRows[i]->Close;
+		allStockIndexRows[i]->SMA10 = allStockIndexRows[i]->SMA10SUM / 10.0f;
+		//--------->>计算SMA20
+		allStockIndexRows[i]->SMA20SUM = allStockIndexRows[i - 1]->SMA20SUM - allStockIndexRows[i - 20]->Close + allStockIndexRows[i]->Close;
+		allStockIndexRows[i]->SMA20 = allStockIndexRows[i]->SMA20SUM / 20.0f;
+		//--------->>计算SMA60
+		allStockIndexRows[i]->SMA60SUM = allStockIndexRows[i - 1]->SMA60SUM - allStockIndexRows[i - 60]->Close + allStockIndexRows[i]->Close;
+		allStockIndexRows[i]->SMA60 = allStockIndexRows[i]->SMA60SUM / 60.0f;
+		//--------->>计算SMA240
+		allStockIndexRows[i]->SMA240SUM = allStockIndexRows[i - 1]->SMA240SUM - allStockIndexRows[i - 240]->Close + allStockIndexRows[i]->Close;
+		allStockIndexRows[i]->SMA240 = allStockIndexRows[i]->SMA240SUM / 240.0f;
+	}
+	{//--------->>计算EMA
+		float alpha5 = 2.0f / (5 + 1);
+		float alpha9 = 2.0f / (9 + 1);
+		float alpha10 = 2.0f / (10 + 1);
+		float alpha12 = 2.0f / (12 + 1);
+		float alpha20 = 2.0f / (20 + 1);
+		float alpha26 = 2.0f / (26 + 1);
+		float alpha60 = 2.0f / (60 + 1);
+		float alpha240 = 2.0f / (240 + 1);
+		allStockIndexRows[i]->EMA5 = allStockIndexRows[i - 1]->EMA5 + alpha5 * (allStockIndexRows[i]->Close - allStockIndexRows[i - 1]->EMA5);
+		allStockIndexRows[i]->EMA10 = allStockIndexRows[i - 1]->EMA10 + alpha10 * (allStockIndexRows[i]->Close - allStockIndexRows[i - 1]->EMA10);
+		allStockIndexRows[i]->EMA20 = allStockIndexRows[i - 1]->EMA20 + alpha20 * (allStockIndexRows[i]->Close - allStockIndexRows[i - 1]->EMA20);
+		allStockIndexRows[i]->EMA60 = allStockIndexRows[i - 1]->EMA60 + alpha60 * (allStockIndexRows[i]->Close - allStockIndexRows[i - 1]->EMA60);
+		allStockIndexRows[i]->EMA240 = allStockIndexRows[i - 1]->EMA240 + alpha240 * (allStockIndexRows[i]->Close - allStockIndexRows[i - 1]->EMA240);
+	}
+	//更新各种指标
+	int cycleInfos[3];
+	{//更新MACD
+		LoadCycleSettingsFromJson("MACD", cycleInfos);//cycleInfos[0]是DIF1的周期,cycleInfos[1]是DIF2的周期,cycleInfos[2]是DEA的周期
+		float dif1Alpha = 2.0f / (static_cast<float>(cycleInfos[0]) + 1.0f);
+		float dif2Alpha = 2.0f / (static_cast<float>(cycleInfos[1]) + 1.0f);
+		float deaAlpha = 2.0f / (static_cast<float>(cycleInfos[2]) + 1.0f);
+		allStockIndexRows[i]->DIF1 = allStockIndexRows[i - 1]->DIF1 + dif1Alpha * (allStockIndexRows[i]->Close - allStockIndexRows[i - 1]->DIF1);
+		allStockIndexRows[i]->DIF2 = allStockIndexRows[i - 1]->DIF2 + dif2Alpha * (allStockIndexRows[i]->Close - allStockIndexRows[i - 1]->DIF2);
+		allStockIndexRows[i]->DIF = allStockIndexRows[i]->DIF1 - allStockIndexRows[i]->DIF2;
+		allStockIndexRows[i]->DEA = allStockIndexRows[i - 1]->DEA + deaAlpha * (allStockIndexRows[i]->DIF - allStockIndexRows[i - 1]->DEA);
+		allStockIndexRows[i]->MACD = (allStockIndexRows[i]->DIF - allStockIndexRows[i]->DEA) * 2.0f;
+	}
+	{//更新KDJ
+		LoadCycleSettingsFromJson("KDJ", cycleInfos);//RSV的周期存储在cycleInfos[0]，K值周期存储在cycleInfos[1]，D值周期存储在cycleInfos[2]
+		float rsvcycle = cycleInfos[0];
+		float kcycle = cycleInfos[1];
+		float dcycle = cycleInfos[2];
+		//获取rsvcycle天内的最高价和最低价
+		float highestN = 0.0f;
+		float lowestN = FLT_MAX;
+		for (int j = 0; j < rsvcycle; ++j) {
+			if (allStockIndexRows[i - j]->Close > highestN) highestN = allStockIndexRows[i - j]->Close;
+			if (allStockIndexRows[i - j]->Close < lowestN) lowestN = allStockIndexRows[i - j]->Close;
+		}
+		//计算RSV
+		if (highestN == lowestN) allStockIndexRows[i]->KDJ_RSV = 0.0f;
+		else allStockIndexRows[i]->KDJ_RSV = (allStockIndexRows[i]->Close - lowestN) / (highestN - lowestN) * 100.0f;
+		//计算K值和D值和J值
+		allStockIndexRows[i]->KDJ_K = ((kcycle - 1.0f) / kcycle) * allStockIndexRows[i - 1]->KDJ_K + (1.0f / kcycle) * allStockIndexRows[i]->KDJ_RSV;
+		allStockIndexRows[i]->KDJ_D = ((dcycle - 1.0f) / dcycle) * allStockIndexRows[i - 1]->KDJ_D + (1.0f / dcycle) * allStockIndexRows[i]->KDJ_K;
+		allStockIndexRows[i]->KDJ_J = 3.0f * allStockIndexRows[i]->KDJ_K - 2.0f * allStockIndexRows[i]->KDJ_D;
+	}
+	{//更新RSI
+		LoadCycleSettingsFromJson("RSI", cycleInfos);//RSI0的周期存储在cycleInfos[0]，RSI1的周期存储在cycleInfos[1],RSI2的周期存储在cycleInfos[2]
+		float changeValue = allStockIndexRows[i]->Close - allStockIndexRows[i - 1]->Close;
+		if (changeValue > 0) {
+			allStockIndexRows[i]->RSI0_AVGUp = (allStockIndexRows[i - 1]->RSI0_AVGUp * static_cast<float>(cycleInfos[0] - 1) + changeValue) / static_cast<float>(cycleInfos[0]);
+			allStockIndexRows[i]->RSI0_AVGDown = (allStockIndexRows[i - 1]->RSI0_AVGDown * static_cast<float>(cycleInfos[0] - 1)) / static_cast<float>(cycleInfos[0]);
+			allStockIndexRows[i]->RSI1_AVGUp = (allStockIndexRows[i - 1]->RSI1_AVGUp * static_cast<float>(cycleInfos[1] - 1) + changeValue) / static_cast<float>(cycleInfos[1]);
+			allStockIndexRows[i]->RSI1_AVGDown = (allStockIndexRows[i - 1]->RSI1_AVGDown * static_cast<float>(cycleInfos[1] - 1)) / static_cast<float>(cycleInfos[1]);
+			allStockIndexRows[i]->RSI2_AVGUp = (allStockIndexRows[i - 1]->RSI2_AVGUp * static_cast<float>(cycleInfos[2] - 1) + changeValue) / static_cast<float>(cycleInfos[2]);
+			allStockIndexRows[i]->RSI2_AVGDown = (allStockIndexRows[i - 1]->RSI2_AVGDown * static_cast<float>(cycleInfos[2] - 1)) / static_cast<float>(cycleInfos[2]);
+		}
+		else {
+			allStockIndexRows[i]->RSI0_AVGDown = (allStockIndexRows[i - 1]->RSI0_AVGDown * static_cast<float>(cycleInfos[0] - 1) - changeValue) / static_cast<float>(cycleInfos[0]);
+			allStockIndexRows[i]->RSI0_AVGUp = (allStockIndexRows[i - 1]->RSI0_AVGUp * static_cast<float>(cycleInfos[0] - 1)) / static_cast<float>(cycleInfos[0]);
+			allStockIndexRows[i]->RSI1_AVGDown = (allStockIndexRows[i - 1]->RSI1_AVGDown * static_cast<float>(cycleInfos[1] - 1) - changeValue) / static_cast<float>(cycleInfos[1]);
+			allStockIndexRows[i]->RSI1_AVGUp = (allStockIndexRows[i - 1]->RSI1_AVGUp * static_cast<float>(cycleInfos[1] - 1)) / static_cast<float>(cycleInfos[1]);
+			allStockIndexRows[i]->RSI2_AVGDown = (allStockIndexRows[i - 1]->RSI2_AVGDown * static_cast<float>(cycleInfos[2] - 1) - changeValue) / static_cast<float>(cycleInfos[2]);
+			allStockIndexRows[i]->RSI2_AVGUp = (allStockIndexRows[i - 1]->RSI2_AVGUp * static_cast<float>(cycleInfos[2] - 1)) / static_cast<float>(cycleInfos[2]);
+		}
+		float RS0 = allStockIndexRows[i]->RSI0_AVGUp / allStockIndexRows[i]->RSI0_AVGDown;
+		allStockIndexRows[i]->RSI0 = 100.0f - (100.0f / (1.0f + RS0));
+		float RS1 = allStockIndexRows[i]->RSI1_AVGUp / allStockIndexRows[i]->RSI1_AVGDown;
+		allStockIndexRows[i]->RSI1 = 100.0f - (100.0f / (1.0f + RS1));
+		float RS2 = allStockIndexRows[i]->RSI2_AVGUp / allStockIndexRows[i]->RSI2_AVGDown;
+		allStockIndexRows[i]->RSI2 = 100.0f - (100.0f / (1.0f + RS2));
+	}
+	{//更新WR
+		LoadCycleSettingsFromJson("WR", cycleInfos);//WR1的周期存储在cycleInfos[0],WR2的周期存储在cycleInfos[1]
+		//获取N个交易日内的最高价和最低价(含当天)
+		//计算WR1
+		float highestN = 0.0f;
+		float lowestN = FLT_MAX;
+		for (int j = 0; j < cycleInfos[0]; ++j) {
+			if (allStockIndexRows[i - j]->Close > highestN) highestN = allStockIndexRows[i - j]->Close;
+			if (allStockIndexRows[i - j]->Close < lowestN) lowestN = allStockIndexRows[i - j]->Close;
+		}
+		if (highestN == lowestN) allStockIndexRows[i]->WR1 = 0.0f;
+		else allStockIndexRows[i]->WR1 = (highestN - allStockIndexRows[i]->Close) / (highestN - lowestN) * 100.0f;
+		//计算WR2
+		highestN = 0.0f;
+		lowestN = FLT_MAX;
+		for (int j = 0; j < cycleInfos[1]; ++j) {
+			if (allStockIndexRows[i - j]->Close > highestN) highestN = allStockIndexRows[i - j]->Close;
+			if (allStockIndexRows[i - j]->Close < lowestN) lowestN = allStockIndexRows[i - j]->Close;
+		}
+		//计算WR2
+		if (highestN == lowestN) allStockIndexRows[i]->WR2 = 0.0f;
+		else allStockIndexRows[i]->WR2 = (highestN - allStockIndexRows[i]->Close) / (highestN - lowestN) * 100.0f;
+	}
+	{//更新DMI
+		LoadCycleSettingsFromJson("DMI", cycleInfos);//前三个参数周期保持一致，都存储在cycleInfos[0],ADXR周期存储在cycleInfos[1]
+		CalculateAndStoreDMI(allStockIndexRows, i, cycleInfos);
+	}
+	{//更新CCI
+		LoadCycleSettingsFromJson("CCI", cycleInfos);//CCI只有一个，周期存储在cycleInfos[0]
+		CalculateAndStoreCCI(allStockIndexRows, i, cycleInfos);
+	}
+	{//更新BIAS
+		LoadCycleSettingsFromJson("BIAS", cycleInfos);//cycleInfos分别存储BIAS0，BIAS1，BIAS2的周期
+		CalculateAndStoreBIAS(allStockIndexRows, i, cycleInfos, 0);
+		CalculateAndStoreBIAS(allStockIndexRows, i, cycleInfos, 1);
+		CalculateAndStoreBIAS(allStockIndexRows, i, cycleInfos, 2);
+	}
+}
+
 void UQuantitativeTradingCanves::RefreshVisibleRows(){
 	GetIntervalRow(allStockIndexRows, visibleRows, startDate, currentDate);
 }
@@ -1333,6 +1523,180 @@ void UQuantitativeTradingCanves::ReSampleSpecifyIndicator(FString inSpecifyName)
 	}
 	//-----------------------计算BIAS
 	if (inSpecifyName == "BIAS0" || inSpecifyName == "BIAS1" || inSpecifyName == "BIAS2") {
+		minBIAS = MAX_FLT, maxBIAS = -MAX_FLT;
+		for (auto item : visibleRows) {
+			if (item->BIAS0 > maxBIAS) maxBIAS = item->BIAS0;
+			if (item->BIAS1 > maxBIAS) maxBIAS = item->BIAS1;
+			if (item->BIAS2 > maxBIAS) maxBIAS = item->BIAS2;
+			if (item->BIAS0 < minBIAS) minBIAS = item->BIAS0;
+			if (item->BIAS1 < minBIAS) minBIAS = item->BIAS1;
+			if (item->BIAS2 < minBIAS) minBIAS = item->BIAS2;
+		}
+		BroadcastIndicatorValueRangeByIndicatorName(indicatorName);
+		float BIASValueRange = maxBIAS - minBIAS;
+		biasOutLines.X = ((1.f - (70.0f - minBIAS) / BIASValueRange) * 0.2f + 0.8f);
+		biasOutLines.Y = ((1.f - (30.0f - minBIAS) / BIASValueRange) * 0.2f + 0.8f);
+		BIASUnitPoints0.Empty();
+		BIASUnitPoints1.Empty();
+		BIASUnitPoints2.Empty();
+		BIASUnitPoints0.Reserve(visibleRows.Num());
+		BIASUnitPoints1.Reserve(visibleRows.Num());
+		BIASUnitPoints2.Reserve(visibleRows.Num());
+		for (int i = 0; i < visibleRows.Num(); ++i) {
+			BIASUnitPoints0.Add((1.f - (visibleRows[i]->BIAS0 - minBIAS) / BIASValueRange) * 0.2f + 0.8f);
+			BIASUnitPoints1.Add((1.f - (visibleRows[i]->BIAS1 - minBIAS) / BIASValueRange) * 0.2f + 0.8f);
+			BIASUnitPoints2.Add((1.f - (visibleRows[i]->BIAS2 - minBIAS) / BIASValueRange) * 0.2f + 0.8f);
+		}
+		return;
+	}
+}
+
+void UQuantitativeTradingCanves::ReSampleIndicatorName(const FString& inIndicatorName){
+	float timeRange = visibleRows.Num() + 1;
+	float timeStep = timeRange / (samplingCounts - 1);
+	//-----------------------计算MACD
+	if (inIndicatorName == "MACD") {
+		absmaxMACD = 0.0f;
+		for (auto item : visibleRows) {
+			if (FMath::Abs(item->MACD) > absmaxMACD) { absmaxMACD = FMath::Abs(item->MACD); }
+			if (FMath::Abs(item->DEA) > absmaxMACD) { absmaxMACD = FMath::Abs(item->DEA); }
+			if (FMath::Abs(item->DIF) > absmaxMACD) { absmaxMACD = FMath::Abs(item->DIF); }
+		}
+		BroadcastIndicatorValueRangeByIndicatorName(indicatorName);
+		MACDUnitPoints.Empty();
+		MACDUnitPoints.Reserve(visibleRows.Num());
+		for (int i = 0; i < visibleRows.Num(); ++i) {
+			float unitMACD = (1.f - (visibleRows[i]->MACD / absmaxMACD * 0.5f + 0.5f)) * 0.2f + 0.8f;
+			float unitDIF = (1.f - (visibleRows[i]->DIF / absmaxMACD * 0.5f + 0.5f)) * 0.2f + 0.8f;
+			float unitDEA = (1.f - (visibleRows[i]->DEA / absmaxMACD * 0.5f + 0.5f)) * 0.2f + 0.8f;
+			MACDUnitPoints.Add(FVector3f(unitDIF, unitDEA, unitMACD));
+		}
+		return;
+	}
+	//-----------------------计算KDJ
+	if (inIndicatorName == "KDJ") {
+		minKDJ = MAX_FLT, maxKDJ = -MAX_FLT;
+		for (auto item : visibleRows) {
+			if (item->KDJ_K > maxKDJ) maxKDJ = item->KDJ_K;
+			if (item->KDJ_D > maxKDJ) maxKDJ = item->KDJ_D;
+			if (item->KDJ_J > maxKDJ) maxKDJ = item->KDJ_J;
+			if (item->KDJ_K < minKDJ) minKDJ = item->KDJ_K;
+			if (item->KDJ_D < minKDJ) minKDJ = item->KDJ_D;
+			if (item->KDJ_J < minKDJ) minKDJ = item->KDJ_J;
+		}
+		BroadcastIndicatorValueRangeByIndicatorName(indicatorName);
+		float KDJValueRange = maxKDJ - minKDJ;
+		kdjOutLines.X = ((1.f - (100.0f - minKDJ) / KDJValueRange) * 0.2f + 0.8f);
+		kdjOutLines.Y = ((1.f - (80.0f - minKDJ) / KDJValueRange) * 0.2f + 0.8f);
+		kdjOutLines.Z = ((1.f - (20.0f - minKDJ) / KDJValueRange) * 0.2f + 0.8f);
+		kdjOutLines.W = ((1.f - (0.0f - minKDJ) / KDJValueRange) * 0.2f + 0.8f);
+		KDJUnitPoints.Empty();
+		KDJUnitPoints.Reserve(visibleRows.Num());
+		for (int i = 0; i < visibleRows.Num(); ++i) {
+			KDJUnitPoints.Add(FVector3f((1.f - (visibleRows[i]->KDJ_K - minKDJ) / KDJValueRange) * 0.2f + 0.8f,
+				(1.f - (visibleRows[i]->KDJ_D - minKDJ) / KDJValueRange) * 0.2f + 0.8f,
+				(1.f - (visibleRows[i]->KDJ_J - minKDJ) / KDJValueRange) * 0.2f + 0.8f));
+		}
+		return;
+	}
+	//-----------------------计算RSI
+	if (inIndicatorName == "RSI") {
+		minRSI = MAX_FLT, maxRSI = -MAX_FLT;
+		for (auto item : visibleRows) {
+			if (item->RSI0 > maxRSI) maxRSI = item->RSI0;
+			if (item->RSI1 > maxRSI) maxRSI = item->RSI1;
+			if (item->RSI2 > maxRSI) maxRSI = item->RSI2;
+			if (item->RSI0 < minRSI) minRSI = item->RSI0;
+			if (item->RSI1 < minRSI) minRSI = item->RSI1;
+			if (item->RSI2 < minRSI) minRSI = item->RSI2;
+		}
+		BroadcastIndicatorValueRangeByIndicatorName(indicatorName);
+		float RSIValueRange = maxRSI - minRSI;
+		rsiOutLines.X = ((1.f - (70.0f - minRSI) / RSIValueRange) * 0.2f + 0.8f);
+		rsiOutLines.Y = ((1.f - (30.0f - minRSI) / RSIValueRange) * 0.2f + 0.8f);
+		RSIUnitPoints0.Empty();
+		RSIUnitPoints1.Empty();
+		RSIUnitPoints2.Empty();
+		RSIUnitPoints0.Reserve(visibleRows.Num());
+		RSIUnitPoints1.Reserve(visibleRows.Num());
+		RSIUnitPoints2.Reserve(visibleRows.Num());
+		for (int i = 0; i < visibleRows.Num(); ++i) {
+			RSIUnitPoints0.Add((1.f - (visibleRows[i]->RSI0 - minRSI) / RSIValueRange) * 0.2f + 0.8f);
+			RSIUnitPoints1.Add((1.f - (visibleRows[i]->RSI1 - minRSI) / RSIValueRange) * 0.2f + 0.8f);
+			RSIUnitPoints2.Add((1.f - (visibleRows[i]->RSI2 - minRSI) / RSIValueRange) * 0.2f + 0.8f);
+		}
+		return;
+	}
+	//-----------------------计算WR
+	if (inIndicatorName == "WR") {
+		minWR = MAX_FLT, maxWR = 0.0f;
+		for (auto item : visibleRows) {
+			if (item->WR1 > maxWR) maxWR = item->WR1;
+			if (item->WR2 > maxWR) maxWR = item->WR2;
+			if (item->WR1 < minWR) minWR = item->WR1;
+			if (item->WR2 < minWR) minWR = item->WR2;
+		}
+		BroadcastIndicatorValueRangeByIndicatorName(indicatorName);
+		float WRValueRange = maxWR - minWR;
+		wrOutLines.X = (((80.0f - minWR) / WRValueRange) * 0.2f + 0.8f);
+		wrOutLines.Y = (((20.0f - minWR) / WRValueRange) * 0.2f + 0.8f);
+		WRUnitPoints1.Empty();
+		WRUnitPoints2.Empty();
+		WRUnitPoints1.Reserve(visibleRows.Num());
+		WRUnitPoints2.Reserve(visibleRows.Num());
+		for (int i = 0; i < visibleRows.Num(); ++i) {
+			WRUnitPoints1.Add(((visibleRows[i]->WR1 - minWR) / WRValueRange) * 0.2f + 0.8f);
+			WRUnitPoints2.Add(((visibleRows[i]->WR2 - minWR) / WRValueRange) * 0.2f + 0.8f);
+		}
+		return;
+	}
+	//-----------------------计算DMI
+	if (inIndicatorName == "DMI") {
+		minDMI = 100.0f, maxDMI = 0.0f;
+		for (auto item : visibleRows) {
+			if (item->PDI > maxDMI) maxDMI = item->PDI;
+			if (item->PDI < minDMI) minDMI = item->PDI;
+			if (item->NDI > maxDMI) maxDMI = item->NDI;
+			if (item->NDI < minDMI) minDMI = item->NDI;
+			if (item->ADX > maxDMI) maxDMI = item->ADX;
+			if (item->ADX < minDMI) minDMI = item->ADX;
+			if (item->ADXR > maxDMI) maxDMI = item->ADXR;
+			if (item->ADXR < minDMI) minDMI = item->ADXR;
+		}
+		BroadcastIndicatorValueRangeByIndicatorName(indicatorName);
+		float DMIValueRange = maxDMI - minDMI;
+		dmiOutLines.X = ((1.f - (50.0f - minDMI) / DMIValueRange) * 0.2f + 0.8f);
+		dmiOutLines.Y = ((1.f - (20.0f - minDMI) / DMIValueRange) * 0.2f + 0.8f);
+		DMIUnitPoints.Empty();
+		DMIUnitPoints.Reserve(visibleRows.Num());
+		for (int i = 0; i < visibleRows.Num(); ++i) {
+			DMIUnitPoints.Add(FVector4f((1.f - (visibleRows[i]->PDI - minDMI) / DMIValueRange) * 0.2f + 0.8f,
+				(1.f - (visibleRows[i]->NDI - minDMI) / DMIValueRange) * 0.2f + 0.8f,
+				(1.f - (visibleRows[i]->ADX - minDMI) / DMIValueRange) * 0.2f + 0.8f,
+				(1.f - (visibleRows[i]->ADXR - minDMI) / DMIValueRange) * 0.2f + 0.8f));
+		}
+		return;
+	}
+	//-----------------------计算CCI
+	if (inIndicatorName == "CCI") {
+		minCCI = MAX_FLT, maxCCI = -MAX_FLT;
+		for (auto item : visibleRows) {
+			if (item->CCI > maxCCI) maxCCI = item->CCI;
+			if (item->CCI < minCCI) minCCI = item->CCI;
+		}
+		BroadcastIndicatorValueRangeByIndicatorName(indicatorName);
+		float CCIValueRange = maxCCI - minCCI;
+		cciOutLines.X = ((1.f - (100.0f - minCCI) / CCIValueRange) * 0.2f + 0.8f);
+		cciOutLines.Y = ((1.f - (-100.0f - minCCI) / CCIValueRange) * 0.2f + 0.8f);
+		CCIUnitPoints.Empty();
+		CCIUnitPoints.Reserve(visibleRows.Num());
+		for (int i = 0; i < visibleRows.Num(); ++i) {
+			CCIUnitPoints.Add((1.f - (visibleRows[i]->CCI - minCCI) / CCIValueRange) * 0.2f + 0.8f);
+		}
+		return;
+	}
+	//-----------------------计算BIAS
+	if (inIndicatorName == "BIAS") {
 		minBIAS = MAX_FLT, maxBIAS = -MAX_FLT;
 		for (auto item : visibleRows) {
 			if (item->BIAS0 > maxBIAS) maxBIAS = item->BIAS0;

@@ -276,6 +276,50 @@ TSharedPtr<FQTStockListRow> UCompanyNameIndexWidget::GetFQTStockListRowByCodeOrN
 	return forReturn;
 }
 
+void UCompanyNameIndexWidget::UpdateLatestDayLine(const FQTStockRealTimeData& latestDayLineData){
+	TSharedPtr < FQTStockIndex > lastestDayKLineData = outKLineDatas_.Last();
+	if (lastestDayKLineData->Date != FDateTime::Now().GetYear() * 10000 + FDateTime::Now().GetMonth() * 100 + FDateTime::Now().GetDay()) {
+		UE_LOG(LogTemp, Warning, TEXT("---------->> 最新日线数据的日期与当前日期不符,无法更新!"));
+		return;
+	}
+	lastestDayKLineData->Open = latestDayLineData.OpenPrice;
+	lastestDayKLineData->Close = latestDayLineData.LatestPrice;
+	lastestDayKLineData->High = latestDayLineData.HighestPrice;
+	lastestDayKLineData->Low = latestDayLineData.LowestPrice;
+	lastestDayKLineData->Volume = latestDayLineData.Volume;
+	lastestDayKLineData->Turnover = latestDayLineData.Turnover;
+	lastestDayKLineData->Change = latestDayLineData.ChangeAmount;
+	lastestDayKLineData->ChangeRatio = latestDayLineData.ChangeRatio;
+	lastestDayKLineData->PriceRange = latestDayLineData.PriceRange;
+	lastestDayKLineData->TurnoverRate = latestDayLineData.TurnoverRate;
+	//存储更新后的日线数据到本地文件
+	FString outputString;
+	TSharedPtr<FJsonObject> rootObj = MakeShareable(new FJsonObject());
+	rootObj->SetNumberField(TEXT("FetchedAt"), FDateTime::Now().GetYear() * 10000 + FDateTime::Now().GetMonth() * 100 + FDateTime::Now().GetDay());
+	TArray<TSharedPtr<FJsonValue>> klineJsonArray;
+	for (const auto& item : outKLineDatas_) {
+		TSharedPtr<FJsonObject> klineObj = MakeShareable(new FJsonObject());
+		klineObj->SetNumberField(TEXT("Date"), item->Date);
+		klineObj->SetNumberField(TEXT("Open"), item->Open);
+		klineObj->SetNumberField(TEXT("Close"), item->Close);
+		klineObj->SetNumberField(TEXT("High"), item->High);
+		klineObj->SetNumberField(TEXT("Low"), item->Low);
+		klineObj->SetNumberField(TEXT("Change"), item->Change);
+		klineObj->SetNumberField(TEXT("ChangeRatio"), item->ChangeRatio);
+		klineObj->SetNumberField(TEXT("Volume"), item->Volume);
+		klineObj->SetNumberField(TEXT("Turnover"), item->Turnover);
+		klineObj->SetNumberField(TEXT("PriceRange"), item->PriceRange);
+		klineObj->SetNumberField(TEXT("TurnoverRate"), item->TurnoverRate);
+		klineJsonArray.Add(MakeShareable(new FJsonValueObject(klineObj)));
+	}
+	rootObj->SetArrayField(TEXT("Klines"), klineJsonArray);
+	TSharedRef<TJsonWriter<>> jsonWriter = TJsonWriterFactory<>::Create(&outputString);
+	if (FJsonSerializer::Serialize(rootObj.ToSharedRef(), jsonWriter)) {
+		FFileHelper::SaveStringToFile(outputString, *currentFilename_);
+		UE_LOG(LogTemp, Log, TEXT("---------->> 成功更新最新日线数据到本地文件!"));
+	}
+}
+
 void UCompanyNameIndexWidget::NativePreConstruct() {
 	Super::NativePreConstruct(); 
 	FetchStockListData();//从网上或本地获取股票列表数据

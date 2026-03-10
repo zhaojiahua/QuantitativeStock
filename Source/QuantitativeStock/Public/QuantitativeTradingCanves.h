@@ -26,6 +26,8 @@ public:
 	TSubclassOf<UUserWidget> KLineFlotWindWidgetClass;
 	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "QT | Params")
 	class UQuantitativeTradingWidget* quantitativeTradingWidget;
+	UPROPERTY(EditInstanceOnly, BlueprintReadWrite, Category = "QT | Params")
+	class UCompanyNameIndexWidget* companyNameIndexWidget;
 	UPROPERTY(meta = (BindWidget))
 	UOverlay* overlayForFloatWind;
 	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "QT | Indicator")
@@ -80,6 +82,12 @@ public:
 	void GetIntervalRowByStringItem(int inItemIndex);
 	UFUNCTION(BlueprintCallable, Category = "QT")
 	void OnIndicatorItemChanged(FName inIndicatorName);
+	//更新最新的日线数据,并且根据最新的日线数据重新计算技术指标,最后重新绘制图表
+	UFUNCTION(BlueprintCallable, Category = "QT")
+	void UpdateLatestDayLine(FQTStockRealTimeData inRealTimeData);
+	//从json文件里读取周期参数（蓝图可调用）
+	UFUNCTION(BlueprintCallable, Category = "QT")
+	void LoadCycleSettingsFromJson_BP(const FString& inIndicatorName, int& out1, int& out2, int& out3);
 
 	//从inVectorCrv[dimension]曲线上均匀采样dataCounts个点,然后绘制曲线在AllottedGeometry上,并且三根曲线的取值范围会作为一个整体缩放到适配AllottedGeometry的大小.
 	TArray<FVector2f>SampleDataFromCurve(UCurveVector* inVectorCrv, const FGeometry& AllottedGeometry, int dimension = 0)const;
@@ -100,14 +108,19 @@ private:
 	void GetIntervalRow(const TArray<TSharedPtr<FQTStockIndex>>& inalldatas, TArray<TSharedPtr<FQTStockIndex>>& outVisibleRows, int cutStart, int cutEnd);
 	//从DataTable里面读取相应的数据
 	TArray<FVector2f>SampleDataFromDataTable();
-	//存储指标参数
-	bool StoreIndicatorParams(FString inSpecifyName, const int cycleInfos[3]);
 	//计算并存储各种技术指标
 	void CaculateAndStoreIndicators(TArray<TSharedPtr<FQTStockIndex>>& allRows);
+	//存储设置的周期参数到json文件里
+	bool SaveCycleSettingsToJson(const FString& inSpecifyName, const int cycleInfos[3]);
+	//从json文件里读取周期参数
+	bool LoadCycleSettingsFromJson(const FString& inIndicatorName, int cycleInfos[3]);
 	//重新计算并绘制指定的指标
 	void ReCaculateSpecifyIndicator(FString inSpecifyName, const int cycleInfos[3]);
+	//重新计算并存储最新日期的各种技术指标
+	void ReCaculateAndStoreLatestDayKLine(const FQTStockRealTimeData& inRealTimeData);
 	void RefreshVisibleRows();
 	void ReSampleSpecifyIndicator(FString inSpecifyName);
+	void ReSampleIndicatorName(const FString& inIndicatorName);
 
 	void SetFirstValues_DMI(TArray<TSharedPtr<FQTStockIndex>>& allRows, const int cycleInfos[3]);
 	void CalculateAndStoreDMI(TArray<TSharedPtr<FQTStockIndex>>& allRows, int i, const int cycleInfos[3]);
