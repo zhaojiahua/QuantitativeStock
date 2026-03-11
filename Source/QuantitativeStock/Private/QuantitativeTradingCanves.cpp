@@ -96,11 +96,11 @@ void UQuantitativeTradingCanves::UpdateLatestDayLine(FQTStockRealTimeData inReal
 		companyNameIndexWidget->UpdateLatestDayLine(inRealTimeData);
 	}
 	//然后更新K线图的最新数据
-	//重新计算最新数据的K线数据
+	//重新计算最新数据的K线数据和各种指标数据
 	ReCaculateAndStoreLatestDayKLine(inRealTimeData);
-	////重新采样最新数据的K线数据
-	//RefreshVisibleRows();
-	//ReSampleIndicatorName(indicatorName.ToString());
+	//重新采样最新数据的K线数据和各种指标数据
+	RefreshVisibleRows();
+	SampleDataFromDataTable();
 }
 
 void UQuantitativeTradingCanves::LoadCycleSettingsFromJson_BP(const FString& inIndicatorName, int& out1, int& out2, int& out3){
@@ -109,7 +109,6 @@ void UQuantitativeTradingCanves::LoadCycleSettingsFromJson_BP(const FString& inI
 	out1 = tempint[0];
 	out2 = tempint[1];
 	out3 = tempint[2];
-	UE_LOG(LogTemp, Warning, TEXT("----->> LoadCycleSettingsFromJson_BP %s: %d,%d,%d"), *inIndicatorName, out1, out2, out3);
 }
 
 TArray<FVector2f> UQuantitativeTradingCanves::SampleDataFromCurve(UCurveVector* inVectorCrv, const FGeometry& AllottedGeometry, int dimension)const
@@ -292,7 +291,6 @@ int32 UQuantitativeTradingCanves::NativePaint(const FPaintArgs& Args,
 		for (int i = leftOutCounts; i < endIndex; ++i) {
 			closePoints.Add(FVector2f((sampledPoints[i].X - leftMove) * finalSlcalX, sampledPoints[i].Y * localSize.Y));
 		}
-		UE_LOG(LogTemp, Warning, TEXT("----->> draw close line with %d points"), closePoints.Num());
 		FSlateDrawElement::MakeLines(OutDrawElements, LayerId, AllottedGeometry.ToPaintGeometry(), closePoints, ESlateDrawEffect::None, FLinearColor(0.6f, 0.8f, 0.2f), true, 2.0f);
 	}
 	//绘制布林线
