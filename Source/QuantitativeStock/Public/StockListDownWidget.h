@@ -35,6 +35,14 @@ public:
 	UItemRightClickWidget* GetRightClickWidget();
 	UFUNCTION(BlueprintImplementableEvent, Category = "QT")
 	void SetAllItemOrgColor();
+	//根据指定的字段对下拉列表项进行排序,默认升序排列(inIndex为0代表按照股票代码排序,1代表按照公司名称排序,2代表按照最新价排序,3代表按照开盘价排序,4代表按照最高价排序,5代表按照最低价排序,6代表按照昨日收盘价排序,7代表按照涨跌额排序,8代表按照涨跌幅排序,9代表按照换手率排序,10代表成交量排序)(ascending为0代表不排序,1代表升序,2代表降序)
+	UFUNCTION(BlueprintCallable, Category = "QT")
+	void SortDownListItems(int inIndex = 0, int ascending = 0);
+	//排序之前的下拉列表项顺序,用于在排序之后恢复原来的顺序
+	TArray<UWidget*> originalDownListItems;
+	//显示下拉列表之前都必须存储一下最原始的顺序
+	UFUNCTION(BlueprintCallable, Category = "QT")
+	void StorageDownListItemsOrder();
 
 	void ClearDownListItems();
 	bool UpdateStockListDatas(const TArray<FQTStockRealTimeData>& listStocksDatas);

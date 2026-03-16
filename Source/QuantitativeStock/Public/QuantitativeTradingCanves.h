@@ -120,7 +120,6 @@ private:
 	void ReCaculateAndStoreLatestDayKLine(const FQTStockRealTimeData& inRealTimeData);
 	void RefreshVisibleRows();
 	void ReSampleSpecifyIndicator(FString inSpecifyName);
-	void ReSampleIndicatorName(const FString& inIndicatorName);
 
 	void SetFirstValues_DMI(TArray<TSharedPtr<FQTStockIndex>>& allRows, const int cycleInfos[3]);
 	void CalculateAndStoreDMI(TArray<TSharedPtr<FQTStockIndex>>& allRows, int i, const int cycleInfos[3]);

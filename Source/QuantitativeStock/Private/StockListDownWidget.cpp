@@ -21,6 +21,36 @@ UItemRightClickWidget* UStockListDownWidget::GetRightClickWidget(){
 	return nullptr;
 }
 
+void UStockListDownWidget::SortDownListItems(int inIndex, int ascending){
+	if (inIndex < 0 || inIndex > 10)return;//无效的排序字段索引
+	if(ascending == 0) {
+		//恢复排序之前的顺序
+		listScrollBox_->ClearChildren();
+		for (UWidget* item : originalDownListItems) {
+			listScrollBox_->AddChild(item);
+		}
+		return;
+	}
+	TArray<UWidget*> downlistItems = listScrollBox_->GetAllChildren();
+	bool ascendingBool = (ascending == 1);
+	downlistItems.Sort([inIndex, ascendingBool](const UWidget& A, const UWidget& B) {
+		const UStockListDownItemWidget* itemA = Cast<UStockListDownItemWidget>(&A);
+		const UStockListDownItemWidget* itemB = Cast<UStockListDownItemWidget>(&B);
+		if (itemA && itemB) {
+			return itemA->CompareTo(*itemB, inIndex, ascendingBool);
+		}
+		return false;
+	});
+	listScrollBox_->ClearChildren();
+	for (UWidget* item : downlistItems) {
+		listScrollBox_->AddChild(item);
+	}
+}
+
+void UStockListDownWidget::StorageDownListItemsOrder(){
+	originalDownListItems= listScrollBox_->GetAllChildren();
+}
+
 void UStockListDownWidget::ClearDownListItems(){
 	TArray<UWidget*> downlistItems = listScrollBox_->GetAllChildren();
 	for (UWidget* item : downlistItems)item->RemoveFromParent();
