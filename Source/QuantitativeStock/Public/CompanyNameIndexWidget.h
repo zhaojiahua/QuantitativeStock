@@ -78,8 +78,7 @@ private:
 	TMap<FString, TSharedPtr<FQTStockListRow>> StockRowListMap_;
 	//存储基金代码或基金名称对应的基金列表检索信息数据
 	TMap<FString, TSharedPtr<FQTStockListRow>> FundRowListMap_;
-	//存储最近访问的股票
-	TArray<TSharedPtr<FQTStockListRow>> DownStockList_;
+
 	//当前代码公司名称对应的文件名路径 | 文件格式: 公司简称+股票代码,例如: 贵州茅台600519
 	FString currentFilename_;
 	//存储获取到的最新K线数据
@@ -120,8 +119,13 @@ private:
 	void FetchFundListData();
 	//发送HTTP请求获取公司介绍数据
 	void FetchCompanyIntroductionData(const FString& codeOrName);
-	//在程序开始的时候获取最近访问的历史数据
-	void GetRecentStockList(const FString& filename);
+
 	//在程序结束的时候保存最近访问的历史数据
 	void SaveRecentStockList(const FString& filename);
+
+	public:
+		//在程序开始的时候获取最近访问的历史数据
+		void GetRecentStockList(const FString& filename);
+		//存储当前下拉列表下的股票
+		TArray<TSharedPtr<FQTStockListRow>> DownStockList_;
 };

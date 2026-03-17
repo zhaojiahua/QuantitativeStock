@@ -39,10 +39,10 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "QT")
 	void SortDownListItems(int inIndex = 0, int ascending = 0);
 	//排序之前的下拉列表项顺序,用于在排序之后恢复原来的顺序
-	TArray<UWidget*> originalDownListItems;
-	//显示下拉列表之前都必须存储一下最原始的顺序
-	UFUNCTION(BlueprintCallable, Category = "QT")
-	void StorageDownListItemsOrder();
+	TArray<UStockListDownItemWidget*> originalDownListItems;
+	//获取当前的排序字段和排序状态
+	UFUNCTION(BlueprintImplementableEvent, Category = "QT")
+	void GetCurrentSortState(int& outIndex, int& outAscending);
 
 	void ClearDownListItems();
 	bool UpdateStockListDatas(const TArray<FQTStockRealTimeData>& listStocksDatas);

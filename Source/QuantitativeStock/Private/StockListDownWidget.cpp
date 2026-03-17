@@ -22,11 +22,13 @@ UItemRightClickWidget* UStockListDownWidget::GetRightClickWidget(){
 }
 
 void UStockListDownWidget::SortDownListItems(int inIndex, int ascending){
-	if (inIndex < 0 || inIndex > 10)return;//无效的排序字段索引
+	if (inIndex < 0 || inIndex > 10)return;
+	UE_LOG(LogTemp, Warning, TEXT("--------------------->>inIndex %d, ascending %d"), inIndex, ascending);
 	if(ascending == 0) {
 		//恢复排序之前的顺序
 		listScrollBox_->ClearChildren();
-		for (UWidget* item : originalDownListItems) {
+		if (originalDownListItems.IsEmpty()) { UE_LOG(LogTemp, Warning, TEXT("--------------------->>originalDownListItems.IsEmpty()")); return; }
+		for (auto item : originalDownListItems) {
 			listScrollBox_->AddChild(item);
 		}
 		return;
@@ -47,23 +49,26 @@ void UStockListDownWidget::SortDownListItems(int inIndex, int ascending){
 	}
 }
 
-void UStockListDownWidget::StorageDownListItemsOrder(){
-	originalDownListItems= listScrollBox_->GetAllChildren();
-}
-
 void UStockListDownWidget::ClearDownListItems(){
 	TArray<UWidget*> downlistItems = listScrollBox_->GetAllChildren();
 	for (UWidget* item : downlistItems)item->RemoveFromParent();
 }
 
 bool UStockListDownWidget::UpdateStockListDatas(const TArray<FQTStockRealTimeData>& listStocksDatas){
+	if (listStocksDatas.IsEmpty()) { UE_LOG(LogTemp, Warning, TEXT("----------------------->>listStocksDatas 为空!!!")); return false; }
 	if (stockListDownItemWidget) {
+		originalDownListItems.Empty();
 		for (const FQTStockRealTimeData& realTimeData : listStocksDatas) {
 			UStockListDownItemWidget* downlistitem = CreateWidget<UStockListDownItemWidget>(GetWorld(), stockListDownItemWidget);
 			downlistitem->StockDownListWidget_ = this;
 			downlistitem->UpdateStockDatas(realTimeData);
 			listScrollBox_->AddChild(downlistitem);
+			originalDownListItems.Add(downlistitem);//存储从json文件获取的items顺序
 		}
+		//根据当前的排序字段进行排序
+		int sortIndex = -1, sortState = -1;
+		GetCurrentSortState(sortIndex, sortState);
+		SortDownListItems(sortIndex, sortState);
 		downListItemNum = listStocksDatas.Num();
 		if (itemRightClickWidget) {
 			itemRight = CreateWidget<UItemRightClickWidget>(GetWorld(), itemRightClickWidget);

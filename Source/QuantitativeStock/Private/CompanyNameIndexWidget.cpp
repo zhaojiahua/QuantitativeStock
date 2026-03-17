@@ -163,6 +163,7 @@ void UCompanyNameIndexWidget::GetStockDownListDatas(const FString& savedFile){
 				FQTStockRealTimeData stockData;
 				stockData.StockCode = item->CODE;
 				stockData.StockName = item->NAME;
+				stockData.LatestPrice = FMath::FRandRange(5.0, 10.0);
 				listStocksDatas_.Add(stockData);
 			}
 			stockListDownWidgetBP->UpdateStockListDatas(listStocksDatas_);
