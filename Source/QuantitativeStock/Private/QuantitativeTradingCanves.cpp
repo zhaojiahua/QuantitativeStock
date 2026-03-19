@@ -111,6 +111,57 @@ void UQuantitativeTradingCanves::LoadCycleSettingsFromJson_BP(const FString& inI
 	out3 = tempint[2];
 }
 
+bool UQuantitativeTradingCanves::GetLatestDayIndicators(float& out1, float& out2, float& out3, float& out4) const{
+	if (allStockIndexRows.IsEmpty())return false;
+	TSharedPtr<FQTStockIndex> latestDayKLine = allStockIndexRows.Last();
+	if (!latestDayKLine.IsValid())return false;
+	if(indicatorName == "Volume") {
+		out1 = latestDayKLine->Volume;
+		return true;
+	}
+	if(indicatorName == "MACD") {
+		out1 = latestDayKLine->DIF;
+		out2 = latestDayKLine->DEA;
+		out3 = latestDayKLine->MACD;
+		return true;
+	}
+	if(indicatorName == "KDJ") {
+		out1 = latestDayKLine->KDJ_K;
+		out2 = latestDayKLine->KDJ_D;
+		out3 = latestDayKLine->KDJ_J;
+		return true;
+	}
+	if(indicatorName == "BIAS") {
+		out1 = latestDayKLine->BIAS0;
+		out2 = latestDayKLine->BIAS1;
+		out3 = latestDayKLine->BIAS2;
+		return true;
+	}
+	if(indicatorName == "RSI") {
+		out1 = latestDayKLine->RSI0;
+		out2 = latestDayKLine->RSI1;
+		out3 = latestDayKLine->RSI2;
+		return true;
+	}
+	if(indicatorName=="WR") {
+		out1 = latestDayKLine->WR1;
+		out2 = latestDayKLine->WR2;
+		return true;
+	}
+	if (indicatorName=="DMI") {
+		out1 = latestDayKLine->PDI;
+		out2 = latestDayKLine->NDI;
+		out3 = latestDayKLine->ADX;
+		out4 = latestDayKLine->ADXR;
+		return true;
+	}
+	if (indicatorName == "CCI") {
+		out1 = latestDayKLine->CCI;
+		return true;
+	}
+	return false;
+}
+
 TArray<FVector2f> UQuantitativeTradingCanves::SampleDataFromCurve(UCurveVector* inVectorCrv, const FGeometry& AllottedGeometry, int dimension)const
 {
 	TArray<FVector2f> tempArray;

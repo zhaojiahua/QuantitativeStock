@@ -475,6 +475,7 @@ bool UCompanyNameIndexWidget::ParseFundListDataResponse(const FString& ResponseS
 }
 
 void UCompanyNameIndexWidget::OnKLineDataRequestComplete(FHttpRequestPtr Request, FHttpResponsePtr Response, bool bWasSuccessful){
+	UE_LOG(LogTemp, Warning, TEXT("---------->> bWasSuccessful %d"), bWasSuccessful);
 	if (bWasSuccessful && Response.IsValid()) {
 		FString responseString = Response->GetContentAsString();
 		outKLineDatas_.Empty();//清空之前的数据
@@ -712,6 +713,7 @@ void UCompanyNameIndexWidget::FetchKLineData(const FString& StockCode, int inklt
 	httpRequest->OnProcessRequestComplete().BindUObject(this,&UCompanyNameIndexWidget::OnKLineDataRequestComplete);
 	httpRequest->SetURL(url);
 	httpRequest->SetVerb(TEXT("GET"));
+	httpRequest->SetHeader("Proxy-Connection", "close");
 	httpRequest->ProcessRequest();
 }
 

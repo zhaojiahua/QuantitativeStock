@@ -88,6 +88,9 @@ public:
 	//从json文件里读取周期参数（蓝图可调用）
 	UFUNCTION(BlueprintCallable, Category = "QT")
 	void LoadCycleSettingsFromJson_BP(const FString& inIndicatorName, int& out1, int& out2, int& out3);
+	//根据当前的指标名称获取最新一天的技术指标数据
+	UFUNCTION(BlueprintCallable, Category = "QT")
+	bool GetLatestDayIndicators(float& out1, float& out2, float& out3, float& out4)const;
 
 	//从inVectorCrv[dimension]曲线上均匀采样dataCounts个点,然后绘制曲线在AllottedGeometry上,并且三根曲线的取值范围会作为一个整体缩放到适配AllottedGeometry的大小.
 	TArray<FVector2f>SampleDataFromCurve(UCurveVector* inVectorCrv, const FGeometry& AllottedGeometry, int dimension = 0)const;
