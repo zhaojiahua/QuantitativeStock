@@ -85,15 +85,15 @@ public:
 	//更新最新的日线数据,并且根据最新的日线数据重新计算技术指标,最后重新绘制图表
 	UFUNCTION(BlueprintCallable, Category = "QT")
 	void UpdateLatestDayLine(FQTStockRealTimeData inRealTimeData);
-	//从json文件里读取周期参数（蓝图可调用）
+	//根据当前的指标名称(IndicatorName)从json文件里读取相应的周期参数（蓝图可调用）
 	UFUNCTION(BlueprintCallable, Category = "QT")
-	void LoadCycleSettingsFromJson_BP(const FString& inIndicatorName, int& out1, int& out2, int& out3);
-	//从json文件里读取指标颜色参数（蓝图可调用）
+	void LoadCycleSettingsFromJson_BP(int& out1, int& out2, int& out3);
+	//根据当前的指标名称(IndicatorName)从json文件里读取相应的指标颜色参数（蓝图可调用）
 	UFUNCTION(BlueprintCallable, Category = "QT")
-	void LoadIndicatorColorSettingsFromJson_BP(const FString& inIndicatorName, FLinearColor& outColor1, FLinearColor& outColor2, FLinearColor& outColor3, FLinearColor& outColor4);
+	void LoadIndicatorColorSettingsFromJson_BP(FLinearColor& outColor1, FLinearColor& outColor2, FLinearColor& outColor3, FLinearColor& outColor4);
 	//根据当前的指标名称获取最新一天的技术指标数据
 	UFUNCTION(BlueprintCallable, Category = "QT")
-	bool GetLatestDayIndicators(float& out1, float& out2, float& out3, float& out4)const;
+	bool GetLatestDayIndicators(FLinearColor& outValues)const;
 
 	//从inVectorCrv[dimension]曲线上均匀采样dataCounts个点,然后绘制曲线在AllottedGeometry上,并且三根曲线的取值范围会作为一个整体缩放到适配AllottedGeometry的大小.
 	TArray<FVector2f>SampleDataFromCurve(UCurveVector* inVectorCrv, const FGeometry& AllottedGeometry, int dimension = 0)const;

@@ -24,6 +24,8 @@ public:
 	float lineYPosition = 0.0f;
 	UPROPERTY(BlueprintReadWrite, Category = "QT | Info")
 	FQTStockIndex stockInfoDatas;
+	UPROPERTY(BlueprintReadWrite, Category = "QT | Info")
+	class UQuantitativeTradingCanves* mainCanvas;
 
 protected:
 	virtual void NativePreConstruct() override;
