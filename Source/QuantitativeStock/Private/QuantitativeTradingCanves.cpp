@@ -111,6 +111,10 @@ void UQuantitativeTradingCanves::LoadCycleSettingsFromJson_BP(const FString& inI
 	out3 = tempint[2];
 }
 
+void UQuantitativeTradingCanves::LoadIndicatorColorSettingsFromJson_BP(const FString& inIndicatorName, FLinearColor& outColor1, FLinearColor& outColor2, FLinearColor& outColor3, FLinearColor& outColor4){
+	LoadIndicatorColorSettingsFromJson(inIndicatorName, outColor1, outColor2, outColor3, outColor4);
+}
+
 bool UQuantitativeTradingCanves::GetLatestDayIndicators(float& out1, float& out2, float& out3, float& out4) const{
 	if (allStockIndexRows.IsEmpty())return false;
 	TSharedPtr<FQTStockIndex> latestDayKLine = allStockIndexRows.Last();
@@ -1007,6 +1011,7 @@ bool UQuantitativeTradingCanves::SaveCycleSettingsToJson(const FString& inSpecif
 	jsonObject->SetNumberField("Cycle1", cycleinfosold[0]);
 	jsonObject->SetNumberField("Cycle2", cycleinfosold[1]);
 	jsonObject->SetNumberField("Cycle3", cycleinfosold[2]);
+	
 	FString outputString;
 	TSharedRef<TJsonWriter<>> writer = TJsonWriterFactory<>::Create(&outputString);
 	if (FJsonSerializer::Serialize(jsonObject.ToSharedRef(), writer)) {
@@ -1025,6 +1030,47 @@ bool UQuantitativeTradingCanves::LoadCycleSettingsFromJson(const FString& inIndi
 			cycleInfos[0] = jsonObject->GetIntegerField("Cycle1");
 			cycleInfos[1] = jsonObject->GetIntegerField("Cycle2");
 			cycleInfos[2] = jsonObject->GetIntegerField("Cycle3");
+			return true;
+		}
+	}
+	return false;
+}
+
+bool UQuantitativeTradingCanves::LoadIndicatorColorSettingsFromJson(const FString& inIndicatorName, FLinearColor& outColor1, FLinearColor& outColor2, FLinearColor& outColor3, FLinearColor& outColor4){
+	FString paramFilePath = FPaths::ProjectDir() + FString::Printf(TEXT("Saved/StockDatas/IndicatorParams/%s_Color.json"), *inIndicatorName);
+	FString inputString;
+	if (FFileHelper::LoadFileToString(inputString, *paramFilePath)) {
+		TSharedPtr<FJsonObject> jsonObject;
+		TSharedRef<TJsonReader<>> reader = TJsonReaderFactory<>::Create(inputString);
+		if (FJsonSerializer::Deserialize(reader, jsonObject) && jsonObject.IsValid()) {
+			TArray<TSharedPtr<FJsonValue>> colorValues = jsonObject->GetArrayField("Color1");
+			if (colorValues.Num() == 4) {
+				outColor1.R = colorValues[0]->AsNumber();
+				outColor1.G = colorValues[1]->AsNumber();
+				outColor1.B = colorValues[2]->AsNumber();
+				outColor1.A = colorValues[3]->AsNumber();
+			}
+			colorValues = jsonObject->GetArrayField("Color2");
+			if (colorValues.Num() == 4) {
+				outColor2.R = colorValues[0]->AsNumber();
+				outColor2.G = colorValues[1]->AsNumber();
+				outColor2.B = colorValues[2]->AsNumber();
+				outColor2.A = colorValues[3]->AsNumber();
+			}
+			colorValues = jsonObject->GetArrayField("Color3");
+			if (colorValues.Num() == 4) {
+				outColor3.R = colorValues[0]->AsNumber();
+				outColor3.G = colorValues[1]->AsNumber();
+				outColor3.B = colorValues[2]->AsNumber();
+				outColor3.A = colorValues[3]->AsNumber();
+			}
+			colorValues = jsonObject->GetArrayField("Color4");
+			if (colorValues.Num() == 4) {
+				outColor4.R = colorValues[0]->AsNumber();
+				outColor4.G = colorValues[1]->AsNumber();
+				outColor4.B = colorValues[2]->AsNumber();
+				outColor4.A = colorValues[3]->AsNumber();
+			}
 			return true;
 		}
 	}

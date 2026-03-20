@@ -88,6 +88,9 @@ public:
 	//从json文件里读取周期参数（蓝图可调用）
 	UFUNCTION(BlueprintCallable, Category = "QT")
 	void LoadCycleSettingsFromJson_BP(const FString& inIndicatorName, int& out1, int& out2, int& out3);
+	//从json文件里读取指标颜色参数（蓝图可调用）
+	UFUNCTION(BlueprintCallable, Category = "QT")
+	void LoadIndicatorColorSettingsFromJson_BP(const FString& inIndicatorName, FLinearColor& outColor1, FLinearColor& outColor2, FLinearColor& outColor3, FLinearColor& outColor4);
 	//根据当前的指标名称获取最新一天的技术指标数据
 	UFUNCTION(BlueprintCallable, Category = "QT")
 	bool GetLatestDayIndicators(float& out1, float& out2, float& out3, float& out4)const;
@@ -117,6 +120,8 @@ private:
 	bool SaveCycleSettingsToJson(const FString& inSpecifyName, const int cycleInfos[3]);
 	//从json文件里读取周期参数
 	bool LoadCycleSettingsFromJson(const FString& inIndicatorName, int cycleInfos[3]);
+	//从json文件里读取指标线颜色参数
+	bool LoadIndicatorColorSettingsFromJson(const FString& inIndicatorName, FLinearColor& outColor1, FLinearColor& outColor2, FLinearColor& outColor3, FLinearColor& outColor4);
 	//重新计算并绘制指定的指标
 	void ReCaculateSpecifyIndicator(FString inSpecifyName, const int cycleInfos[3]);
 	//重新计算并存储最新日期的各种技术指标
