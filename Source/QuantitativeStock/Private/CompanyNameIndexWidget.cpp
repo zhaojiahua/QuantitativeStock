@@ -294,7 +294,7 @@ void UCompanyNameIndexWidget::UpdateLatestDayLine(const FQTStockRealTimeData& la
 	lastestDayKLineData->Close = latestDayLineData.LatestPrice;
 	lastestDayKLineData->High = latestDayLineData.HighestPrice;
 	lastestDayKLineData->Low = latestDayLineData.LowestPrice;
-	lastestDayKLineData->Volume = latestDayLineData.Volume;
+	lastestDayKLineData->Volume = 10000.0f * latestDayLineData.Volume;//FQTStockRealTimeData实时数据中的Volume单位是万手,而FQTStockIndex日线数据中的Volume单位是股,所以需要乘以10000进行转换
 	lastestDayKLineData->Turnover = latestDayLineData.Turnover;
 	lastestDayKLineData->Change = latestDayLineData.ChangeAmount;
 	lastestDayKLineData->ChangeRatio = latestDayLineData.ChangeRatio;
