@@ -277,8 +277,15 @@ TSharedPtr<FQTStockListRow> UCompanyNameIndexWidget::GetFQTStockListRowByCodeOrN
 	return forReturn;
 }
 
+bool UCompanyNameIndexWidget::CheckStockCodeOrNameExist(const FString& stockCodeOrName){
+	if (StockRowListMap_.Contains(stockCodeOrName) || FundRowListMap_.Contains(stockCodeOrName)) {
+		return true;
+	}
+	return false;
+}
+
 void UCompanyNameIndexWidget::UpdateLatestDayLine(const FQTStockRealTimeData& latestDayLineData){
-	TSharedPtr < FQTStockIndex > lastestDayKLineData = outKLineDatas_.Last();
+	TSharedPtr < FQTStockIndex >& lastestDayKLineData = outKLineDatas_.Last();
 	if (lastestDayKLineData->Date != FDateTime::Now().GetYear() * 10000 + FDateTime::Now().GetMonth() * 100 + FDateTime::Now().GetDay()) {
 		UE_LOG(LogTemp, Warning, TEXT("---------->> 最新日线数据的日期与当前日期不符,无法更新!"));
 		return;
@@ -316,8 +323,8 @@ void UCompanyNameIndexWidget::UpdateLatestDayLine(const FQTStockRealTimeData& la
 	rootObj->SetArrayField(TEXT("Klines"), klineJsonArray);
 	TSharedRef<TJsonWriter<>> jsonWriter = TJsonWriterFactory<>::Create(&outputString);
 	if (FJsonSerializer::Serialize(rootObj.ToSharedRef(), jsonWriter)) {
-		FFileHelper::SaveStringToFile(outputString, *currentFilename_);
-		UE_LOG(LogTemp, Log, TEXT("---------->> 成功更新最新日线数据到本地文件!"));
+		if (FFileHelper::SaveStringToFile(outputString, *currentFilename_)) { UE_LOG(LogTemp, Warning, TEXT("---------->> 成功更新最新日线数据到本地文件!")); }
+		else UE_LOG(LogTemp, Error, TEXT("---------->> 保存最新日线数据到本地文件失败!"));
 	}
 }
 
@@ -475,7 +482,6 @@ bool UCompanyNameIndexWidget::ParseFundListDataResponse(const FString& ResponseS
 }
 
 void UCompanyNameIndexWidget::OnKLineDataRequestComplete(FHttpRequestPtr Request, FHttpResponsePtr Response, bool bWasSuccessful){
-	UE_LOG(LogTemp, Warning, TEXT("---------->> bWasSuccessful %d"), bWasSuccessful);
 	if (bWasSuccessful && Response.IsValid()) {
 		FString responseString = Response->GetContentAsString();
 		outKLineDatas_.Empty();//清空之前的数据
@@ -498,7 +504,7 @@ void UCompanyNameIndexWidget::OnKLineDataRequestComplete(FHttpRequestPtr Request
 				klineObject->SetNumberField(TEXT("Volume"), eachKLineData->Volume);
 				klineObject->SetNumberField(TEXT("Turnover"), eachKLineData->Turnover);
 				klineObject->SetNumberField(TEXT("PriceRange"), eachKLineData->PriceRange);
-				klineObject->SetNumberField(TEXT("TurnoverRate"), eachKLineData->TurnoverRate);
+				klineObject->SetNumberField(TEXT("TurnoverRate"), eachKLineData->TurnoverRate);/*
 				klineObject->SetNumberField(TEXT("SMA5"), eachKLineData->SMA5);
 				klineObject->SetNumberField(TEXT("SMA10"), eachKLineData->SMA10);
 				klineObject->SetNumberField(TEXT("SMA20"), eachKLineData->SMA20);
@@ -550,6 +556,9 @@ void UCompanyNameIndexWidget::OnKLineDataRequestComplete(FHttpRequestPtr Request
 				klineObject->SetNumberField(TEXT("BIAS0"), eachKLineData->BIAS0);
 				klineObject->SetNumberField(TEXT("BIAS1"), eachKLineData->BIAS1);
 				klineObject->SetNumberField(TEXT("BIAS2"), eachKLineData->BIAS2);
+				klineObject->SetNumberField(TEXT("HistoryVolumeRatio"), eachKLineData->HistoryVolumeRatio);
+				klineObject->SetNumberField(TEXT("VolumeRatio"), eachKLineData->VolumeRatio);
+				klineObject->SetNumberField(TEXT("VolumeSUM"), eachKLineData->VolumeSUM);*/
 				klineArray.Add(MakeShareable(new FJsonValueObject(klineObject)));
 			}
 			jsonObject->SetNumberField(TEXT("FetchedAt"), FDateTime::Now().GetYear() * 10000 + FDateTime::Now().GetMonth() * 100 + FDateTime::Now().GetDay());

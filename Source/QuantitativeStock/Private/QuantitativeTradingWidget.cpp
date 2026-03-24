@@ -69,7 +69,7 @@ void UQuantitativeTradingWidget::GetLatestF10FinanceData(const FString& StockCod
 
 void UQuantitativeTradingWidget::StartMonitoring(const FString& inStockCode, float inIntervalSeconds, int32 insource){
 	if (isMonitoring_) return;
-	if (inStockCode.IsEmpty()) return;
+	if (inStockCode.Len() != 6) { UE_LOG(LogTemp, Warning, TEXT("--------------->> 当前的股票代码%s 不合法!启动监控失败!"), *inStockCode); return; }
 	if (!stockMonitor_) {
 		stockMonitor_ = NewObject<UStockMonitor>();
 	}

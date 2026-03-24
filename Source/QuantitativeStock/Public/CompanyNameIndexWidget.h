@@ -56,6 +56,9 @@ public:
 	TSharedPtr<FQTStockListRow> GetFQTStockListRowByCodeOrName(FString innameorcode, int16 stockOrFund = 0);
 	UFUNCTION(BlueprintImplementableEvent, Category = "QT | Events")
 	void OnStockCodeTextCommit(const FString& stockcode);
+	//检查传入的股票代码或公司名称是否存在于股票列表数据中
+	UFUNCTION(BlueprintCallable,BlueprintPure, Category = "QT | Functions")
+	bool CheckStockCodeOrNameExist(const FString& stockCodeOrName);
 
 	//更新outKLineDatas_里的最后一天的数据为最新的实时数据(当K线数据的最后一天日期与最新实时数据的日期相同的时候更新最后一天的数据,否则不更新)
 	void UpdateLatestDayLine(const FQTStockRealTimeData& latestDayLineData);

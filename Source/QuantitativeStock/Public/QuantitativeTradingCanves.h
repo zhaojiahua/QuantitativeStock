@@ -124,7 +124,7 @@ private:
 	bool LoadIndicatorColorSettingsFromJson(const FString& inIndicatorName, FLinearColor& outColor1, FLinearColor& outColor2, FLinearColor& outColor3, FLinearColor& outColor4);
 	//重新计算并绘制指定的指标
 	void ReCaculateSpecifyIndicator(FString inSpecifyName, const int cycleInfos[3]);
-	//重新计算并存储最新日期的各种技术指标
+	//重新计算并存储最新日期的各种技术指标(同时要重新存储Kline101.json文件)
 	void ReCaculateAndStoreLatestDayKLine(const FQTStockRealTimeData& inRealTimeData);
 	void RefreshVisibleRows();
 	void ReSampleSpecifyIndicator(FString inSpecifyName);
@@ -135,6 +135,8 @@ private:
 	void CalculateAndStoreCCI(TArray<TSharedPtr<FQTStockIndex>>& allRows, int i, const int cycleInfos[3]);
 	void SetFirstValues_BIAS(TArray<TSharedPtr<FQTStockIndex>>& allRows, const int cycleInfos[3], int crv);
 	void CalculateAndStoreBIAS(TArray<TSharedPtr<FQTStockIndex>>& allRows, int i, const int cycleInfos[3], int crv);
+
+	float HistoryMinVolume = MAX_FLT, HistoryMaxVolume = 0.0f;//存储历史数据中的成交量最小值和最大值
 
 	TArray<FVector2f> sampledPoints;
 	TArray<float> sma5UnitPoints;

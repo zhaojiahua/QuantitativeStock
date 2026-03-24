@@ -121,6 +121,8 @@ bool UQuantitativeTradingCanves::GetLatestDayIndicators(FLinearColor& outValues)
 	if (!latestDayKLine.IsValid())return false;
 	if(indicatorName == "Volume") {
 		outValues.R = latestDayKLine->Volume;
+		outValues.G = latestDayKLine->VolumeRatio;
+		outValues.B = latestDayKLine->HistoryVolumeRatio;
 		return true;
 	}
 	if(indicatorName == "MACD") {
@@ -793,6 +795,12 @@ TArray<FVector2f>UQuantitativeTradingCanves::SampleDataFromDataTable() {
 }
 
 void UQuantitativeTradingCanves::CaculateAndStoreIndicators(TArray<TSharedPtr<FQTStockIndex>>& allRows) {
+	//计算所有历史数据中成交量的最大值和最小值
+	for(auto& item : allRows) {
+		if (item->Volume < HistoryMinVolume)HistoryMinVolume = item->Volume;
+		if (item->Volume > HistoryMaxVolume)HistoryMaxVolume = item->Volume;
+	}
+	allRows[0]->HistoryVolumeRatio = (allRows[0]->Volume - HistoryMinVolume) / (HistoryMaxVolume - HistoryMinVolume);
 	//初始化第一个交易日的MA值
 	float tempSum = 0;
 	for (int i = 0; i < 240; ++i) {
@@ -861,6 +869,12 @@ void UQuantitativeTradingCanves::CaculateAndStoreIndicators(TArray<TSharedPtr<FQ
 	SetFirstValues_BIAS(allRows, tempBIAScycles1, 1);
 	int tempBIAScycles2[3] = { 24,0,0 };
 	SetFirstValues_BIAS(allRows, tempBIAScycles2, 2);
+	//设置量比的初始值
+	allRows[0]->VolumeSUM = allRows[0]->Volume;//第一个交易日的交易量总和等于其交易量
+	for (int i = 1; i < 5; ++i) {//前5个交易日的交易量总和等于之前交易量总和加上当天的交易量(只有第5个交易日是满足5天交易量总和的)
+		allRows[i]->VolumeSUM = allRows[i - 1]->VolumeSUM + allRows[i]->Volume;
+	}
+
 	//计算后续交易日的MA值
 	float alpha5 = 2.0f / (5 + 1);
 	float alpha9 = 2.0f / (9 + 1);
@@ -871,7 +885,8 @@ void UQuantitativeTradingCanves::CaculateAndStoreIndicators(TArray<TSharedPtr<FQ
 	float alpha60 = 2.0f / (60 + 1);
 	float alpha240 = 2.0f / (240 + 1);
 	for (int i = 1; i < allRows.Num(); i++) {
-		if (i > 4) {//从第6个交易日开始计算SMA5 同时开始计算WR2
+		allRows[i]->HistoryVolumeRatio = (allRows[i]->Volume - HistoryMinVolume) / (HistoryMaxVolume - HistoryMinVolume);//计算历史数据中每个交易日的历史量比
+		if (i > 4) {//从第6个交易日开始计算SMA5;同时开始计算WR2;同时计算量比
 			allRows[i]->SMA5SUM = allRows[i - 1]->SMA5SUM - allRows[i - 5]->Close + allRows[i]->Close;
 			allRows[i]->SMA5 = allRows[i]->SMA5SUM / 5.0f;
 			//获取6个交易日内的最高价和最低价(含当天)
@@ -884,6 +899,9 @@ void UQuantitativeTradingCanves::CaculateAndStoreIndicators(TArray<TSharedPtr<FQ
 			//计算WR2
 			if (highest6 == lowest6) allRows[i]->WR2 = 0.0f;
 			else allRows[i]->WR2 = (highest6 - allRows[i]->Close) / (highest6 - lowest6) * 100.0f;
+			//计算量比
+			allRows[i]->VolumeSUM = allRows[i - 1]->VolumeSUM + allRows[i]->Volume - allRows[i - 5]->Volume;
+			allRows[i]->VolumeRatio = allRows[i]->Volume / (allRows[i]->VolumeSUM / 5.0f);
 		}
 		if (i > 5) {//从第7个交易日开始计算BIAS0
 			CalculateAndStoreBIAS(allRows, i, tempBIAScycles0, 0);
@@ -1336,7 +1354,7 @@ void UQuantitativeTradingCanves::ReCaculateAndStoreLatestDayKLine(const FQTStock
 	latestRow->Low = inRealTimeData.LowestPrice;
 	latestRow->Change = inRealTimeData.ChangeAmount;
 	latestRow->ChangeRatio = inRealTimeData.ChangeRatio;
-	latestRow->Volume = inRealTimeData.Volume;
+	latestRow->Volume = inRealTimeData.Volume * 10000.0f;//realTimeData中的Volume单位是万手,所以要乘以10000转换成手
 	latestRow->Turnover = inRealTimeData.Turnover;
 	latestRow->PriceRange = inRealTimeData.PriceRange;
 	latestRow->TurnoverRate = inRealTimeData.TurnoverRate;
@@ -1373,6 +1391,17 @@ void UQuantitativeTradingCanves::ReCaculateAndStoreLatestDayKLine(const FQTStock
 		allStockIndexRows[i]->EMA20 = allStockIndexRows[i - 1]->EMA20 + alpha20 * (allStockIndexRows[i]->Close - allStockIndexRows[i - 1]->EMA20);
 		allStockIndexRows[i]->EMA60 = allStockIndexRows[i - 1]->EMA60 + alpha60 * (allStockIndexRows[i]->Close - allStockIndexRows[i - 1]->EMA60);
 		allStockIndexRows[i]->EMA240 = allStockIndexRows[i - 1]->EMA240 + alpha240 * (allStockIndexRows[i]->Close - allStockIndexRows[i - 1]->EMA240);
+	}
+	//更新量比
+	{
+		allStockIndexRows[i]->VolumeSUM = allStockIndexRows[i - 1]->VolumeSUM - allStockIndexRows[i - 5]->Volume + allStockIndexRows[i]->Volume;
+		allStockIndexRows[i]->VolumeRatio = allStockIndexRows[i]->Volume / (allStockIndexRows[i]->VolumeSUM / 5.0f);
+	}
+	//更新历史量比
+	{
+		if (allStockIndexRows[i]->Volume > HistoryMaxVolume) HistoryMaxVolume = allStockIndexRows[i]->Volume;
+		if (allStockIndexRows[i]->Volume < HistoryMinVolume) HistoryMinVolume = allStockIndexRows[i]->Volume;
+		allStockIndexRows[i]->HistoryVolumeRatio = (allStockIndexRows[i]->Volume - HistoryMinVolume) / (HistoryMaxVolume - HistoryMinVolume);
 	}
 	//更新各种指标
 	int cycleInfos[3];

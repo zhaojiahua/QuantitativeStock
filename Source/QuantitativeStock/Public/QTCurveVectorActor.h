@@ -218,6 +218,15 @@ struct FQTStockIndex : public FTableRowBase
 	float BIAS1= 0.0f;
 	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite)
 	float BIAS2= 0.0f;
+	//今天成交量在过去所有历史数据里的成交量的相对位置,这个数值可以用来衡量当天的成交量是处于过去所有成交量中的什么水平
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite)
+	float HistoryVolumeRatio= 0.0f;
+	//量比,当天的成交量和过去5天平均成交量的比值,这个数值可以用来衡量当天的成交量相对于过去5天成交量的水平
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite)
+	float VolumeRatio= 0.0f;
+	//过去5天成交量的综合,用来计算量比的分母
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite)
+	float VolumeSUM= 0.0f;
 };
 
 //公司的概况信息数据结构体
