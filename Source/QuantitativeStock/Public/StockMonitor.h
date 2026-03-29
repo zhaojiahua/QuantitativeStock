@@ -11,6 +11,8 @@
 DECLARE_DELEGATE_TwoParams(FOnRequestSuccess, const FString& /*ResponseData*/ , int32 /*指明所使用的数据源*/);
 //委托: F10请求成功
 DECLARE_DELEGATE_TwoParams(FOnRequestSuccessF10, const FString& /*FinancialF10Data*/, int32 /*指明所使用的数据源*/);
+//委托: KLine请求成功
+DECLARE_DELEGATE_TwoParams(FOnRequestSuccessKLine, const FString& /*KLineData*/, int32 /*指明所使用的数据源*/);
 // 委托：请求失败
 DECLARE_DELEGATE_TwoParams(FOnRequestFailed, int32 /*ErrorCode*/, const FString& /*ErrorMessage*/);
 
@@ -25,6 +27,8 @@ public:
 	UStockMonitor();
 	//获取单只股票F10财务数据(指定数据源,0代表东方财富API,1代表腾讯API,2代表新浪API(新浪API暂时不可用))
 	void GetStockF10FianceMainData(const FString& inStockCode, int32 indatasource = 0);
+	//获取单只股票所有历史F10财务数据(东方财富网200页的数据,足够使用了)
+	void GetStockF10FianceMainDatas(const FString& inStockCode, int32 indatasource = 0);
 	//获取单只股票实时行情数据(指定数据源,0代表东方财富API,1代表腾讯API,2代表新浪API(新浪API暂时不可用))
 	void GetStockData(const FString& inStockCode,int32 indatasource=0);
 	//获取多只股票实时行情数据(可以优先从腾讯网获取)
@@ -56,7 +60,7 @@ private:
 	void OnResponseReceived(FHttpRequestPtr request, FHttpResponsePtr response, bool successful);
 	//F10财务数据HTTP响应处理
 	void OnResponseReceivedForF10(FHttpRequestPtr request, FHttpResponsePtr response, bool successful);
-	//构建股票数据请求URL(指定数据源,0代表东方财富API,1代表腾讯API,2代表新浪API(新浪API暂时不可用))
+	//构建股票实时行情数据请求URL(指定数据源,0代表东方财富API,1代表腾讯API,2代表新浪API(新浪API暂时不可用))
 	FString BuildStockDataUrl(const FString& inStockCode, int32 indatasource);
 	//根据响应判断数据源
 	int32 DetermineDataSource(FHttpResponsePtr response);
@@ -65,8 +69,10 @@ private:
 
 	TSharedPtr<IHttpRequest> httpRequest_;
 	TSharedPtr<IHttpRequest> httpRequestF10_;
+	TSharedPtr<IHttpRequest> httpRequestKLine_;
 	FOnRequestSuccess onRequestSuccess_;
 	FOnRequestSuccessF10 onRequestSuccessF10_;
+	FOnRequestSuccessKLine onRequestSuccessKLine_;
 	FOnRequestFailed onRequestFailed_;
 
 	float requestTimeOut_;

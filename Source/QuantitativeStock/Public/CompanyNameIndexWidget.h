@@ -14,6 +14,7 @@ struct FQTStockIndex;//日线数据结构体
 struct FQTStockRealTimeData;//实时行情数据结构
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnIntroductionUpdate, const FQTCompanyAbstractRow&, abstractData);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnFetchKLineData);
 
 UCLASS()
 class QUANTITATIVESTOCK_API UCompanyNameIndexWidget : public UUserWidget
@@ -52,6 +53,8 @@ public:
 	//更新公司简介广播代理
 	UPROPERTY(BlueprintAssignable,Category = "QT | Delegate")
 	FOnIntroductionUpdate onIntroductionUpdate;
+	//获取到最新K线数据并保存后,广播这个代理
+	FOnFetchKLineData onFetchKLineDataToSave;
 	//根据名称或代码获取证券的检索信息(0代表股票信息,1代表基金信息,默认股票)
 	TSharedPtr<FQTStockListRow> GetFQTStockListRowByCodeOrName(FString innameorcode, int16 stockOrFund = 0);
 	UFUNCTION(BlueprintImplementableEvent, Category = "QT | Events")
@@ -108,6 +111,8 @@ private:
 	bool ParseFundListDataResponse(const FString& ResponseString, TMap<FString, TSharedPtr<FQTStockListRow>>& outFundListMap);
 	//处理K线数据HTTP请求完成
 	void OnKLineDataRequestComplete(FHttpRequestPtr Request, FHttpResponsePtr Response, bool bWasSuccessful);
+	//处理K线数据HTTP请求完成(后台保存文件,不更新画布)
+	void OnKLineDataRequestCompleteJustSave(FHttpRequestPtr Request, FHttpResponsePtr Response, bool bWasSuccessful);
 	//处理股票列表数据HTTP请求完成
 	void OnStockListDataRequestComplete(FHttpRequestPtr Request, FHttpResponsePtr Response, bool bWasSuccessful);
 	//处理基金列表数据HTTP请求完成
@@ -131,4 +136,6 @@ private:
 		void GetRecentStockList(const FString& filename);
 		//存储当前下拉列表下的股票
 		TArray<TSharedPtr<FQTStockListRow>> DownStockList_;
+		//发送HTTP请求获取K线数据,只保存到本地json文件,不刷新mainCanvas界面
+		void FetchKLineDataJustSave(const FString& StockCode, int inklt = 101, int  infqt = 1);
 };

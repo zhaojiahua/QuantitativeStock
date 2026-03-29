@@ -67,6 +67,24 @@ void UStockMonitor::GetStockF10FianceMainData(const FString& inStockCode, int32 
 	//等待响应完成(简化处理，实际应用中应使用异步回调)
 }
 
+void UStockMonitor::GetStockF10FianceMainDatas(const FString& inStockCode, int32 indatasource){
+	//最新一期资产负债表和利润表摘要的指定字段数据
+	//获取资产负债表利润表摘要数据的URL-东方财富网站API
+	//FString urlGRATIO = FString::Printf(TEXT("https://datacenter.eastmoney.com/securities/api/data/v1/get?reportName=RPT_F10_FINANCE_GRATIO&columns=TOTAL_ASSETS,TOTAL_CURRENT_ASSETS,TOTAL_NONCURRENT_ASSETS,TOTAL_LIABILITIES,TOTAL_OPERATE_COST,TOTAL_OPERATE_INCOME&filter=(SECUCODE%%3D%%22%s.%s%%22)&sortTypes=-1%%2C1&sortColumns=REPORT_DATE%%2CINTERFACE_TYPE&pageNumber=1&pageSize=1&source=HSF10"), *inStockCode, inStockCode.StartsWith(TEXT("6")) ? TEXT("SH") : TEXT("SZ"));
+	//获取主要财务指标数据的URL-东方财富网站API
+	FString urlMainIndicator = FString::Printf(TEXT("https://datacenter.eastmoney.com/securities/api/data/get?type=RPT_F10_FINANCE_MAINFINADATA&sty=APP_F10_MAINFINADATA&filter=(SECUCODE%%3D%%22%s.%s%%22)&p=1&ps=200&sr=-1&st=REPORT_DATE&source=HSF10"), *inStockCode, inStockCode.StartsWith(TEXT("6")) ? TEXT("SH") : TEXT("SZ"));
+	if (indatasource == 1) {
+		// 腾讯API暂不支持获取F10财务数据
+		UE_LOG(LogTemp, Error, TEXT("--------------------->> 腾讯API暂不支持获取F10财务数据"));
+	}
+	else if (indatasource == 2) {
+		// 新浪API暂不支持获取F10财务数据
+		UE_LOG(LogTemp, Error, TEXT("--------------------->> 新浪API暂不支持获取F10财务数据"));
+	}
+	SendHttpRequestForF10(urlMainIndicator);
+	//等待响应完成(简化处理，实际应用中应使用异步回调)
+}
+
 void UStockMonitor::GetStockData(const FString& inStockCode, int32 indatasource){
 	currentStockCode_ = inStockCode;
 	currentRetryCount_ = 0;

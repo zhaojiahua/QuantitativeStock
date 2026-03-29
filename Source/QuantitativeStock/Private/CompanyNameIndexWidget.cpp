@@ -231,6 +231,9 @@ bool UCompanyNameIndexWidget::GetKLineDatasByStockCode(const FString& stockCode,
 			int fetchedTime;
 			jsonObject->TryGetNumberField(TEXT("FetchedAt"), fetchedTime);
 			int currentTime = FDateTime::Now().GetYear() * 10000 + FDateTime::Now().GetMonth() * 100 + FDateTime::Now().GetDay();
+			EDayOfWeek weekday = FDateTime::Now().GetDayOfWeek();
+			if (weekday == EDayOfWeek::Saturday)currentTime -= 1;//如果是周六就往前推1天
+			if (weekday == EDayOfWeek::Sunday)currentTime -= 2;//如果是周日就往前推2天
 			if(fetchedTime < currentTime) {//如果数据超过一天没更新,就重新从网站获取日线数据并保存到本地文件
 				UE_LOG(LogTemp, Warning, TEXT("---------->> 股票日线数据文件超过一天未更新,正在重新从网站获取数据"));
 				FetchKLineData(stockCode, inklt, infqt);
@@ -382,7 +385,8 @@ bool UCompanyNameIndexWidget::ParseKLineDataResponse(const FString& ResponseStri
 		TSharedPtr<FJsonObject> dataObject = jsonObject->GetObjectField(TEXT("data"));
 		if (dataObject.IsValid()) {
 			const TArray<TSharedPtr<FJsonValue>>* klinesArray;
-			if (dataObject->TryGetArrayField(TEXT("klines"), klinesArray)) {
+			FString stockCode, stockName;
+			if (dataObject->TryGetArrayField(TEXT("klines"), klinesArray) && dataObject->TryGetStringField(TEXT("code"), stockCode) && dataObject->TryGetStringField(TEXT("name"), stockName)) {
 				outKLineDatas.Empty();//清空之前的数据
 				for (auto& eachKLineValue : *klinesArray) {
 					FString klineString = eachKLineValue->AsString();
@@ -390,6 +394,8 @@ bool UCompanyNameIndexWidget::ParseKLineDataResponse(const FString& ResponseStri
 					klineString.ParseIntoArray(klineElements, TEXT(","), true);
 					if (klineElements.Num() >= 10) {
 						TSharedPtr<FQTStockIndex>klineData = MakeShareable(new FQTStockIndex());
+						klineData->IndexCode = stockCode;
+						klineData->IndexChineseName = stockName;
 						TArray<FString> datearray;
 						klineElements[0].ParseIntoArray(datearray, TEXT("-"), true);
 						klineData->Date = FCString::Atoi(*datearray[0]) * 10000 + FCString::Atoi(*datearray[1]) * 100 + FCString::Atoi(*datearray[2]);//日期转换成整数格式YYYYMMDD
@@ -504,7 +510,8 @@ void UCompanyNameIndexWidget::OnKLineDataRequestComplete(FHttpRequestPtr Request
 				klineObject->SetNumberField(TEXT("Volume"), eachKLineData->Volume);
 				klineObject->SetNumberField(TEXT("Turnover"), eachKLineData->Turnover);
 				klineObject->SetNumberField(TEXT("PriceRange"), eachKLineData->PriceRange);
-				klineObject->SetNumberField(TEXT("TurnoverRate"), eachKLineData->TurnoverRate);/*
+				klineObject->SetNumberField(TEXT("TurnoverRate"), eachKLineData->TurnoverRate);
+				/*
 				klineObject->SetNumberField(TEXT("SMA5"), eachKLineData->SMA5);
 				klineObject->SetNumberField(TEXT("SMA10"), eachKLineData->SMA10);
 				klineObject->SetNumberField(TEXT("SMA20"), eachKLineData->SMA20);
@@ -561,6 +568,8 @@ void UCompanyNameIndexWidget::OnKLineDataRequestComplete(FHttpRequestPtr Request
 				klineObject->SetNumberField(TEXT("VolumeSUM"), eachKLineData->VolumeSUM);*/
 				klineArray.Add(MakeShareable(new FJsonValueObject(klineObject)));
 			}
+			jsonObject->SetStringField(TEXT("Code"), outKLineDatas_.Last()->IndexCode);
+			jsonObject->SetStringField(TEXT("Name"), outKLineDatas_.Last()->IndexChineseName);
 			jsonObject->SetNumberField(TEXT("FetchedAt"), FDateTime::Now().GetYear() * 10000 + FDateTime::Now().GetMonth() * 100 + FDateTime::Now().GetDay());
 			jsonObject->SetArrayField(TEXT("Klines"), klineArray);
 			FString outputString;
@@ -570,6 +579,51 @@ void UCompanyNameIndexWidget::OnKLineDataRequestComplete(FHttpRequestPtr Request
 					UE_LOG(LogTemp, Warning, TEXT("---------->> 股票日线数据已成功保存到本地文件: %s"), *currentFilename_);
 				}
 				else UE_LOG(LogTemp, Error, TEXT("---------->> 保存股票日线数据到本地文件失败: %s"), *currentFilename_);
+			}
+			else UE_LOG(LogTemp, Error, TEXT("---------->> 序列化股票日线数据失败!"));
+		}
+	}
+	else UE_LOG(LogTemp, Error, TEXT("---------->> 获取股票日线数据请求失败!"));
+}
+
+void UCompanyNameIndexWidget::OnKLineDataRequestCompleteJustSave(FHttpRequestPtr Request, FHttpResponsePtr Response, bool bWasSuccessful){
+	if (bWasSuccessful && Response.IsValid()) {
+		FString responseString = Response->GetContentAsString();
+		TArray<TSharedPtr<FQTStockIndex>> forSaveKLineDatas;
+		if (ParseKLineDataResponse(responseString, forSaveKLineDatas)) {
+			//将数据保存到本地文件
+			UE_LOG(LogTemp, Warning, TEXT("---------->> 股票日线数据获取成功,正在保存到本地文件..."));
+			TSharedPtr<FJsonObject> jsonObject = MakeShareable(new FJsonObject());
+			TArray<TSharedPtr<FJsonValue>> klineArray;
+			for (TSharedPtr<FQTStockIndex> eachKLineData : forSaveKLineDatas) {
+				TSharedPtr<FJsonObject> klineObject = MakeShareable(new FJsonObject());
+				klineObject->SetNumberField(TEXT("Date"), eachKLineData->Date);
+				klineObject->SetNumberField(TEXT("Open"), eachKLineData->Open);
+				klineObject->SetNumberField(TEXT("Close"), eachKLineData->Close);
+				klineObject->SetNumberField(TEXT("High"), eachKLineData->High);
+				klineObject->SetNumberField(TEXT("Low"), eachKLineData->Low);
+				klineObject->SetNumberField(TEXT("Change"), eachKLineData->Change);
+				klineObject->SetNumberField(TEXT("ChangeRatio"), eachKLineData->ChangeRatio);
+				klineObject->SetNumberField(TEXT("Volume"), eachKLineData->Volume);
+				klineObject->SetNumberField(TEXT("Turnover"), eachKLineData->Turnover);
+				klineObject->SetNumberField(TEXT("PriceRange"), eachKLineData->PriceRange);
+				klineObject->SetNumberField(TEXT("TurnoverRate"), eachKLineData->TurnoverRate);
+				klineArray.Add(MakeShareable(new FJsonValueObject(klineObject)));
+			}
+			jsonObject->SetStringField(TEXT("Code"), forSaveKLineDatas.Last()->IndexCode);
+			jsonObject->SetStringField(TEXT("Name"), forSaveKLineDatas.Last()->IndexChineseName);
+			jsonObject->SetNumberField(TEXT("FetchedAt"), FDateTime::Now().GetYear() * 10000 + FDateTime::Now().GetMonth() * 100 + FDateTime::Now().GetDay());
+			jsonObject->SetArrayField(TEXT("Klines"), klineArray);
+			FString outputString;
+			TSharedRef<TJsonWriter<>> jsonWriter = TJsonWriterFactory<>::Create(&outputString);
+			if (FJsonSerializer::Serialize(jsonObject.ToSharedRef(), jsonWriter)) {
+				TSharedPtr<FQTStockListRow>  tempStockListRow = GetFQTStockListRowByCodeOrName(forSaveKLineDatas.Last()->IndexCode);//根据股票代码获取对应的本地文件路径
+				FString klinePath = FPaths::ProjectDir() + FString::Printf(TEXT("Saved/StockDatas/KlineDatas/%s/Kline101.json"), *(tempStockListRow->NAMECODE));
+				if (FFileHelper::SaveStringToFile(outputString, *klinePath)) {
+					UE_LOG(LogTemp, Warning, TEXT("---------->> 股票日线数据已成功保存到本地文件: %s"), *klinePath);
+					if (onFetchKLineDataToSave.IsBound())onFetchKLineDataToSave.Broadcast();
+				}
+				else UE_LOG(LogTemp, Error, TEXT("---------->> 保存股票日线数据到本地文件失败: %s"), *klinePath);
 			}
 			else UE_LOG(LogTemp, Error, TEXT("---------->> 序列化股票日线数据失败!"));
 		}
@@ -903,4 +957,14 @@ void UCompanyNameIndexWidget::SaveRecentStockList(const FString& filename){
 		else UE_LOG(LogTemp, Error, TEXT("---------->> 保存%s历史数据到本地文件失败: %s"), *filename, *recentFilename);
 	}
 	else UE_LOG(LogTemp, Error, TEXT("---------->> 序列化%s历史数据失败!"), *filename);
+}
+
+void UCompanyNameIndexWidget::FetchKLineDataJustSave(const FString& StockCode, int inklt, int infqt) {
+	FString url = GetKLineDataURL(StockCode, inklt, infqt);
+	TSharedRef<IHttpRequest, ESPMode::ThreadSafe> httpRequest = FHttpModule::Get().CreateRequest();
+	httpRequest->OnProcessRequestComplete().BindUObject(this, &UCompanyNameIndexWidget::OnKLineDataRequestCompleteJustSave);
+	httpRequest->SetURL(url);
+	httpRequest->SetVerb(TEXT("GET"));
+	httpRequest->SetHeader("Proxy-Connection", "close");
+	httpRequest->ProcessRequest();
 }
