@@ -345,6 +345,9 @@ struct FQTFinancialF10Main : public FTableRowBase
 	//报告期
 	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite)
 	FString REPORT_DATE = "";
+	//报告期(整形)
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite)
+	int REPORTDATE = 0;
 	//报告类型
 	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite)
 	FString REPORT_TYPE = "";

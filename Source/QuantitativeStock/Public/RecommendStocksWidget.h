@@ -5,6 +5,20 @@
 #include "RecommendStocksWidget.generated.h"
 
 struct FQTFinancialF10Main;
+
+UENUM(BlueprintType)
+enum class EBusinessCategory : uint8
+{
+	Unknown          UMETA(DisplayName = "未知"),
+	HighTech         UMETA(DisplayName = "高科技"),
+	SalesAgency      UMETA(DisplayName = "销售代理/经销"),
+	Manufacturing    UMETA(DisplayName = "传统制造"),
+	Financial        UMETA(DisplayName = "金融"),
+	Consumer         UMETA(DisplayName = "消费"),
+	Energy           UMETA(DisplayName = "能源"),
+	Other            UMETA(DisplayName = "其他")
+};
+
 UCLASS()
 class QUANTITATIVESTOCK_API URecommendStocksWidget : public UUserWidget
 {
@@ -33,7 +47,7 @@ private:
 	//从json文件中读取股票列表(由于访问限制的问题,暂时只从最近访问列表中读取股票数据),并根据传入的过滤字符过滤掉不需要的股票,过滤后的结果存储在RecommendStocks_中
 	bool LoadStocksFromRecentStockListJson(const TArray<FString>& filterChars);
 	//存放推荐股票列表的数组(每只股票对应一个权重,权重值越大越是优先推荐的股票,默认权重值是0,权重值小于0的相当于直接筛掉了)
-	TMap<FString, int> RecommendStocks_;
+	TMap<FString, float> RecommendStocks_;
 
 	//股票监控器实例
 	class UStockMonitor* stockMonitor_;
@@ -46,8 +60,11 @@ private:
 	//通过股票代码获取对应的日线数据
 	void GetKLineDatasByStockCode(FString stockCode);
 	bool NeedToDownLoadKLineFromInternet(FString stockCode);
+	bool LoadLocalKLineData(FString stockCode, TSharedPtr<FJsonObject>& outJsonObj);
 	void GetF10DatasByStockCode(FString stockCode);
 	bool NeedToDownLoadF10FromInternet(FString stockCode);
+	bool LoadLocalF10Data(FString stockCode, TSharedPtr<FJsonObject>& outJsonObj);
+	FString GetNameCode(FString stockCode);
 	//记录更新K线股票的个数=RecommendStocks_.Num()时,说明所有股票的K线数据更新完了
 	int GetKLineCounts;
 	//记录更新F10财务数据股票的个数=RecommendStocks_.Num()时,说明所有股票的F10数据更新完了
@@ -60,4 +77,24 @@ private:
 	void UpdateStockKLineF10(const TArray<FString> stockCodes);
 	//分析财务数据
 	void AnalyzeF10Datas(const TArray<FString> stockCodes);
+	//  辅助函数：根据日期获取对应时期的EPS
+	float GetEPSByDate(const TArray<TSharedPtr<FJsonValue>>* F10Datas, int32 KLineDate);
+
+	//读取公司简介文件,提取公司的主营业务和营业范围
+	FString GetBusinessDescription(FString stockCode);
+
+	/**
+	 * 分析公司主营业务，返回业务类型和权重调整值
+	 * @param BusinessDescription 公司主营业务描述（可以是字符串数组或单个字符串）
+	 * @param OutCategory 输出业务类型
+	 * @return 权重调整值（正数增加权重，负数减少权重）
+	 */
+	static float AnalyzeBusinessAndGetWeightAdjustment(const FString& BusinessDescription, EBusinessCategory& OutCategory);
+
+	// 高科技关键词库
+	static const TArray<FString> HighTechKeywords;
+	// 销售代理/经销关键词库
+	static const TArray<FString> SalesAgencyKeywords;
+	// 计算匹配分数
+	static float CalculateMatchScore(const FString& Text, const TArray<FString>& Keywords);
 };

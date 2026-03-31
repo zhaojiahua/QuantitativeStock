@@ -162,6 +162,7 @@ void UStockMonitor::SendHttpRequestForF10(const FString& inurl){
 	//设置请求方法和URL
 	httpRequestF10_->SetURL(inurl);
 	httpRequestF10_->SetVerb(TEXT("GET"));
+	httpRequestF10_->SetHeader("Proxy-Connection", "close");//不使用代理
 	httpRequestF10_->SetTimeout(requestTimeOut_);
 	//设置请求头
 	for (const TPair<FString, FString>& header : requestHeaders_) {
