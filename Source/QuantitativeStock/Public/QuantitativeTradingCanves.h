@@ -114,8 +114,7 @@ private:
 	void GetIntervalRow(const TArray<TSharedPtr<FQTStockIndex>>& inalldatas, TArray<TSharedPtr<FQTStockIndex>>& outVisibleRows, int cutStart, int cutEnd);
 	//从DataTable里面读取相应的数据
 	TArray<FVector2f>SampleDataFromDataTable();
-	//计算并存储各种技术指标
-	void CaculateAndStoreIndicators(TArray<TSharedPtr<FQTStockIndex>>& allRows);
+
 	//存储设置的周期参数到json文件里
 	bool SaveCycleSettingsToJson(const FString& inSpecifyName, const int cycleInfos[3]);
 	//从json文件里读取周期参数
@@ -199,5 +198,7 @@ private:
 
 public:
 	//响应公司信息提交的委托
-	void OnCompanyCommitted(const TArray<TSharedPtr<FQTStockIndex>>& inAllRows);
+	void OnCompanyCommitted(const TArray<TSharedPtr<FQTStockIndex>>& inAllRows, bool isLocalData = false);
+	//计算并存储各种技术指标
+	void CaculateAndStoreIndicators(TArray<TSharedPtr<FQTStockIndex>>& allRows);
 };

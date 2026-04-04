@@ -2,9 +2,8 @@
 
 #include "CoreMinimal.h"
 #include "Blueprint/UserWidget.h"
+#include "QTCurveVectorActor.h"
 #include "RecommendStocksWidget.generated.h"
-
-struct FQTFinancialF10Main;
 
 UENUM(BlueprintType)
 enum class EBusinessCategory : uint8
@@ -17,6 +16,14 @@ enum class EBusinessCategory : uint8
 	Consumer         UMETA(DisplayName = "消费"),
 	Energy           UMETA(DisplayName = "能源"),
 	Other            UMETA(DisplayName = "其他")
+};
+
+UENUM(BlueprintType)
+enum class EIndicatorColor : uint8
+{
+	None    UMETA(DisplayName = "无灯"),
+	Red     UMETA(DisplayName = "红灯"),
+	Green   UMETA(DisplayName = "绿灯")
 };
 
 UCLASS()
@@ -35,11 +42,20 @@ public:
 	5.技术指标分析:8个技术指标(包括成交量Volume在内),亮红灯的指标个数大于三个,筛掉.亮绿灯的个数大于3个可以考虑,绿灯个数越多越优先考虑;
 	出手股票筛选步骤:8个技术指标(包括成交量Volume在内),有两个及以上的指标亮红灯,红灯个数越多越优先考虑;
 	*/
-	UFUNCTION(BlueprintCallable, Category = "Stock")
+	UFUNCTION(BlueprintCallable, Category = "QT | Stock")
 	void StartFilterStocks();
 	//调用它里面的函数刷新K线数据
 	UPROPERTY(EditInstanceOnly, BlueprintReadWrite, Category = "QT | Assets")
 	class UCompanyNameIndexWidget* companyNameIndexWidgetBP;
+	//股票推荐算法的进度,0-1,可以绑定到UI上显示进度条
+	UPROPERTY(BlueprintReadWrite, Category = "QT | Params")
+	float progress = 0.0f;
+	//添加前10只推荐股票到UI上显示,可以绑定到UI上显示推荐股票列表
+	UFUNCTION(BlueprintImplementableEvent, Category = "QT | Events")
+	void DisplayRecommendedStocks(const TArray<FQTStockRealTimeData>& stockRealDatas);
+	//获取推荐股票的技术指标灯颜色,可以绑定到UI上显示每只股票的技术指标情况
+	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "QT | Stock")
+	TArray<EIndicatorColor> GetStockIndicatorColors(FString stockCode);
 
 protected:
 	virtual void NativeConstruct() override;
@@ -48,11 +64,13 @@ private:
 	bool LoadStocksFromRecentStockListJson(const TArray<FString>& filterChars);
 	//存放推荐股票列表的数组(每只股票对应一个权重,权重值越大越是优先推荐的股票,默认权重值是0,权重值小于0的相当于直接筛掉了)
 	TMap<FString, float> RecommendStocks_;
+	//存放8大指标灯颜色的数组,每只股票对应一个8个灯的数组,可以用来显示每只股票的技术指标情况
+	TMap<FString, TArray<EIndicatorColor>> StockIndicatorColors_;
 
 	//股票监控器实例
 	class UStockMonitor* stockMonitor_;
 	//HTTP响应处理
-	void HandleStockDataResponse(const FString& ResponseData, int32 insource = 0);
+	void HandleStockDataResponse(const FString& ResponseData, int32 insource = 1);
 	void HandleF10DataResponse(const FString& ResponseData, int32 insource = 0);
 	void HandleStockDataError(int32 ErrorCode, const FString& ErrorMessage);
 
@@ -75,8 +93,8 @@ private:
 	void PlusGetF10Counts();
 	//更新股票K线数据和F10财务数据
 	void UpdateStockKLineF10(const TArray<FString> stockCodes);
-	//分析财务数据
-	void AnalyzeF10Datas(const TArray<FString> stockCodes);
+	//分析财务数据,公司经营业务以及技术指标
+	void AnalyzeStockDatas(const TArray<FString> stockCodes);
 	//  辅助函数：根据日期获取对应时期的EPS
 	float GetEPSByDate(const TArray<TSharedPtr<FJsonValue>>* F10Datas, int32 KLineDate);
 
@@ -91,10 +109,39 @@ private:
 	 */
 	static float AnalyzeBusinessAndGetWeightAdjustment(const FString& BusinessDescription, EBusinessCategory& OutCategory);
 
+	/*
+	Volume历史百分位>0.7闪红灯,<0.3闪绿灯,否则不闪灯;
+	MACD>0.2闪红灯,<-0.2闪绿灯,否则不闪灯;
+	KDJ_J>90闪红灯,<10闪绿灯;
+	RSI2>RSI3&&RSI2>50闪红灯,RSI2<RSI3&&RSI2<50闪绿灯,否则不闪灯;
+	WR1和WR2同时大于90闪红灯,同时小于10闪绿灯,否则不闪灯;
+	PDI>NDI&&ADX>20闪红灯,NDI>PDI&&ADX>20闪绿灯,否则不闪灯;
+	CCI>100闪红灯,<0闪绿灯,否则不闪灯;
+	BIAS0>3&&BIAS1>5&&BIAS2>10闪红灯,BIAS0<-3&&BIAS1<-5&&BIAS2<-10闪绿灯,否则不闪灯
+	----------------------------------------------------------------------------------------------------------
+	8个灯,红灯个数>4的直接筛掉,绿灯个数越多的,推荐权重越大
+	*/
+	float AnalyzeIndicatorsAndGetWeightAdjustment(const FString& stockCode);
+	//辅助函数:加载最新日期KLine数据
+	bool LoadLatestTechnicalIndicators(const FString& stockCode, FQTStockIndex& klineIndicators);
+	// 判断各个指标并返回灯的颜色
+	static EIndicatorColor CheckVolumeIndicator(float HistoryVolumeRatio);
+	static EIndicatorColor CheckMACDIndicator(float MACD);
+	static EIndicatorColor CheckKDJIndicator(float KDJ_J);
+	static EIndicatorColor CheckRSIIndicator(float RSI2, float RSI3);
+	static EIndicatorColor CheckWRIndicator(float WR1, float WR2);
+	static EIndicatorColor CheckDMIIndicator(float PDI, float NDI, float ADX);
+	static EIndicatorColor CheckCCIIndicator(float CCI);
+	static EIndicatorColor CheckBIASIndicator(float BIAS0, float BIAS1, float BIAS2);
+	// 计算权重
+	static float CalculateWeight(int32 RedLightCount, int32 GreenLightCount);
+
 	// 高科技关键词库
 	static const TArray<FString> HighTechKeywords;
 	// 销售代理/经销关键词库
 	static const TArray<FString> SalesAgencyKeywords;
 	// 计算匹配分数
 	static float CalculateMatchScore(const FString& Text, const TArray<FString>& Keywords);
+	//股票分析进度
+	void SetProgress(int32 processedCount);
 };

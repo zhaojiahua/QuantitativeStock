@@ -1,8 +1,5 @@
-﻿// Fill out your copyright notice in the Description page of Project Settings.
-
-
+﻿
 #include "CompanyNameIndexWidget.h"
-#include "QTCurveVectorActor.h"
 #include "QuantitativeTradingCanves.h"
 #include "StockListDownWidget.h"
 #include "RegexMatchedWidget.h"
@@ -78,7 +75,7 @@ void UCompanyNameIndexWidget::GetIntroductionByCodeOrName(FString codeOrName){
 void UCompanyNameIndexWidget::GetKLineDatasBP(const FString& codeOrName, int inklt, int  infqt){
 	TSharedPtr<FQTStockListRow>* sourcecodeptr = StockRowListMap_.Find(codeOrName);
 	if (sourcecodeptr) {
-		if (GetKLineDatasByStockCode((*sourcecodeptr)->CODE, inklt, infqt) && outKLineDatas_.Num() > 0 && mainCanvas)	mainCanvas->OnCompanyCommitted(outKLineDatas_);
+		if (GetKLineDatasByStockCode((*sourcecodeptr)->CODE, inklt, infqt) && outKLineDatas_.Num() > 0 && mainCanvas)	mainCanvas->OnCompanyCommitted(outKLineDatas_, true);
 	}
 	else UE_LOG(LogTemp,Warning,TEXT("----------------------------------------------------->> 股票不存在!"));
 }
@@ -240,6 +237,7 @@ bool UCompanyNameIndexWidget::GetKLineDatasByStockCode(const FString& stockCode,
 				return false;
 			}
 			else {//本地数据有效,直接更新K线数据组
+				UE_LOG(LogTemp, Warning, TEXT("---------->> %s日线数据本地数据有效直接加载本地数据"), *currentFilename_);
 				const TArray<TSharedPtr<FJsonValue>>* klineArray;
 				if (jsonObject->TryGetArrayField(TEXT("Klines"), klineArray)) {
 					outKLineDatas_.Empty();//清空之前的数据
@@ -258,6 +256,66 @@ bool UCompanyNameIndexWidget::GetKLineDatasByStockCode(const FString& stockCode,
 							klineData->Turnover = klineObject->TryGetField(TEXT("Turnover"))->AsNumber();
 							klineData->PriceRange = klineObject->TryGetField(TEXT("PriceRange"))->AsNumber();
 							klineData->TurnoverRate = klineObject->TryGetField(TEXT("TurnoverRate"))->AsNumber();
+							klineData->ConsNumber = klineObject->TryGetField(TEXT("ConsNumber"))->AsNumber();
+							klineData->SMA5 = klineObject->TryGetField(TEXT("SMA5"))->AsNumber();
+							klineData->SMA5SUM = klineObject->TryGetField(TEXT("SMA5SUM"))->AsNumber();
+							klineData->SMA10 = klineObject->TryGetField(TEXT("SMA10"))->AsNumber();
+							klineData->SMA10SUM = klineObject->TryGetField(TEXT("SMA10SUM"))->AsNumber();
+							klineData->SMA20 = klineObject->TryGetField(TEXT("SMA20"))->AsNumber();
+							klineData->SMA20SUM = klineObject->TryGetField(TEXT("SMA20SUM"))->AsNumber();
+							klineData->SMA60 = klineObject->TryGetField(TEXT("SMA60"))->AsNumber();
+							klineData->SMA60SUM = klineObject->TryGetField(TEXT("SMA60SUM"))->AsNumber();
+							klineData->SMA240 = klineObject->TryGetField(TEXT("SMA240"))->AsNumber();
+							klineData->SMA240SUM = klineObject->TryGetField(TEXT("SMA240SUM"))->AsNumber();
+							klineData->EMA5 = klineObject->TryGetField(TEXT("EMA5"))->AsNumber();
+							klineData->EMA10 = klineObject->TryGetField(TEXT("EMA10"))->AsNumber();
+							klineData->EMA20 = klineObject->TryGetField(TEXT("EMA20"))->AsNumber();
+							klineData->EMA60 = klineObject->TryGetField(TEXT("EMA60"))->AsNumber();
+							klineData->EMA240 = klineObject->TryGetField(TEXT("EMA240"))->AsNumber();
+							klineData->DIF1 = klineObject->TryGetField(TEXT("DIF1"))->AsNumber();
+							klineData->DIF2 = klineObject->TryGetField(TEXT("DIF2"))->AsNumber();
+							klineData->DIF = klineObject->TryGetField(TEXT("DIF"))->AsNumber();
+							klineData->DEA = klineObject->TryGetField(TEXT("DEA"))->AsNumber();
+							klineData->MACD = klineObject->TryGetField(TEXT("MACD"))->AsNumber();
+							klineData->BollUpper = klineObject->TryGetField(TEXT("BollUpper"))->AsNumber();
+							klineData->BollLower = klineObject->TryGetField(TEXT("BollLower"))->AsNumber();
+							klineData->KDJ_RSV = klineObject->TryGetField(TEXT("KDJ_RSV"))->AsNumber();
+							klineData->KDJ_K = klineObject->TryGetField(TEXT("KDJ_K"))->AsNumber();
+							klineData->KDJ_D = klineObject->TryGetField(TEXT("KDJ_D"))->AsNumber();
+							klineData->KDJ_J = klineObject->TryGetField(TEXT("KDJ_J"))->AsNumber();
+							klineData->RSI0_AVGUp = klineObject->TryGetField(TEXT("RSI0_AVGUp"))->AsNumber();
+							klineData->RSI0_AVGDown = klineObject->TryGetField(TEXT("RSI0_AVGDown"))->AsNumber();
+							klineData->RSI0 = klineObject->TryGetField(TEXT("RSI0"))->AsNumber();
+							klineData->RSI1_AVGUp = klineObject->TryGetField(TEXT("RSI1_AVGUp"))->AsNumber();
+							klineData->RSI1_AVGDown = klineObject->TryGetField(TEXT("RSI1_AVGDown"))->AsNumber();
+							klineData->RSI1 = klineObject->TryGetField(TEXT("RSI1"))->AsNumber();
+							klineData->RSI2_AVGUp = klineObject->TryGetField(TEXT("RSI2_AVGUp"))->AsNumber();
+							klineData->RSI2_AVGDown = klineObject->TryGetField(TEXT("RSI2_AVGDown"))->AsNumber();
+							klineData->RSI2 = klineObject->TryGetField(TEXT("RSI2"))->AsNumber();
+							klineData->WR1 = klineObject->TryGetField(TEXT("WR1"))->AsNumber();
+							klineData->WR2 = klineObject->TryGetField(TEXT("WR2"))->AsNumber();
+							klineData->TR_Average = klineObject->TryGetField(TEXT("TR_Average"))->AsNumber();
+							klineData->PDI_Average = klineObject->TryGetField(TEXT("PDI_Average"))->AsNumber();
+							klineData->NDI_Average = klineObject->TryGetField(TEXT("NDI_Average"))->AsNumber();
+							klineData->PDI = klineObject->TryGetField(TEXT("PDI"))->AsNumber();
+							klineData->NDI = klineObject->TryGetField(TEXT("NDI"))->AsNumber();
+							klineData->DX = klineObject->TryGetField(TEXT("DX"))->AsNumber();
+							klineData->ADX = klineObject->TryGetField(TEXT("ADX"))->AsNumber();
+							klineData->ADXR = klineObject->TryGetField(TEXT("ADXR"))->AsNumber();
+							klineData->CCI_TP = klineObject->TryGetField(TEXT("CCI_TP"))->AsNumber();
+							klineData->CCI_TPSUM = klineObject->TryGetField(TEXT("CCI_TPSUM"))->AsNumber();
+							klineData->CCI_SMA = klineObject->TryGetField(TEXT("CCI_SMA"))->AsNumber();
+							klineData->CCI_MAD = klineObject->TryGetField(TEXT("CCI_MAD"))->AsNumber();
+							klineData->CCI = klineObject->TryGetField(TEXT("CCI"))->AsNumber();
+							klineData->BIAS0_SMASUM = klineObject->TryGetField(TEXT("BIAS0_SMASUM"))->AsNumber();
+							klineData->BIAS1_SMASUM = klineObject->TryGetField(TEXT("BIAS1_SMASUM"))->AsNumber();
+							klineData->BIAS2_SMASUM = klineObject->TryGetField(TEXT("BIAS2_SMASUM"))->AsNumber();
+							klineData->BIAS0 = klineObject->TryGetField(TEXT("BIAS0"))->AsNumber();
+							klineData->BIAS1 = klineObject->TryGetField(TEXT("BIAS1"))->AsNumber();
+							klineData->BIAS2 = klineObject->TryGetField(TEXT("BIAS2"))->AsNumber();
+							klineData->HistoryVolumeRatio = klineObject->TryGetField(TEXT("HistoryVolumeRatio"))->AsNumber();
+							klineData->VolumeRatio = klineObject->TryGetField(TEXT("VolumeRatio"))->AsNumber();
+							klineData->VolumeSUM = klineObject->TryGetField(TEXT("VolumeSUM"))->AsNumber();
 							outKLineDatas_.Add(klineData);
 						}
 					}
@@ -333,6 +391,32 @@ void UCompanyNameIndexWidget::UpdateLatestDayLine(const FQTStockRealTimeData& la
 
 void UCompanyNameIndexWidget::NativePreConstruct() {
 	Super::NativePreConstruct(); 
+	//初始化用户代理列表
+	userAgentList_ = {
+		TEXT("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.3"),
+		TEXT("Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/56.0.2924.87 Safari/537.36"),
+		TEXT("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_12_6) AppleWebKit/602.3.12 (KHTML, like Gecko) Version/10.0.3 Safari/602.4.8"),
+		TEXT("Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/44.0.2403.157 Safari/537.36"),
+		TEXT("Mozilla/5.0 (iPhone; CPU iPhone OS 10_3_1 like Mac OS X) AppleWebKit/603.1.30 (KHTML, like Gecko) Version/10.0 Mobile/14E304 Safari/602.1"),
+		TEXT("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"),
+		TEXT("Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:121.0) Gecko/20100101 Firefox/121.0"),
+		TEXT("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"),
+		TEXT("Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
+	};
+	// 基础头
+	requestHeaders_.Add(TEXT("Accept"), TEXT("text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8"));
+	requestHeaders_.Add(TEXT("Accept-Language"), TEXT("zh-CN,zh;q=0.9,en;q=0.8"));
+	requestHeaders_.Add(TEXT("Accept-Encoding"), TEXT("gzip, deflate"));
+	requestHeaders_.Add(TEXT("Connection"), TEXT("keep-alive"));
+	requestHeaders_.Add(TEXT("Cache-Control"), TEXT("no-cache"));
+	requestHeaders_.Add(TEXT("Pragma"), TEXT("no-cache"));
+	requestHeaders_.Add(TEXT("Upgrade-Insecure-Requests"), TEXT("1"));
+	// 模拟浏览器头
+	requestHeaders_.Add(TEXT("Sec-Fetch-Dest"), TEXT("document"));
+	requestHeaders_.Add(TEXT("Sec-Fetch-Mode"), TEXT("navigate"));
+	requestHeaders_.Add(TEXT("Sec-Fetch-Site"), TEXT("same-origin"));
+	requestHeaders_.Add(TEXT("Sec-Fetch-User"), TEXT("?1"));
+
 	FetchStockListData();//从网上或本地获取股票列表数据
 	FetchFundListData();//从网上或本地获取基金列表数据
 	stockMonitor_ = nullptr;
@@ -511,12 +595,17 @@ void UCompanyNameIndexWidget::OnKLineDataRequestComplete(FHttpRequestPtr Request
 				klineObject->SetNumberField(TEXT("Turnover"), eachKLineData->Turnover);
 				klineObject->SetNumberField(TEXT("PriceRange"), eachKLineData->PriceRange);
 				klineObject->SetNumberField(TEXT("TurnoverRate"), eachKLineData->TurnoverRate);
-				/*
+				klineObject->SetNumberField(TEXT("ConsNumber"), eachKLineData->ConsNumber);
 				klineObject->SetNumberField(TEXT("SMA5"), eachKLineData->SMA5);
+				klineObject->SetNumberField(TEXT("SMA5SUM"), eachKLineData->SMA5SUM);
 				klineObject->SetNumberField(TEXT("SMA10"), eachKLineData->SMA10);
+				klineObject->SetNumberField(TEXT("SMA10SUM"), eachKLineData->SMA10SUM);
 				klineObject->SetNumberField(TEXT("SMA20"), eachKLineData->SMA20);
+				klineObject->SetNumberField(TEXT("SMA20SUM"), eachKLineData->SMA20SUM);
 				klineObject->SetNumberField(TEXT("SMA60"), eachKLineData->SMA60);
+				klineObject->SetNumberField(TEXT("SMA60SUM"), eachKLineData->SMA60SUM);
 				klineObject->SetNumberField(TEXT("SMA240"), eachKLineData->SMA240);
+				klineObject->SetNumberField(TEXT("SMA240SUM"), eachKLineData->SMA240SUM);
 				klineObject->SetNumberField(TEXT("EMA5"), eachKLineData->EMA5);
 				klineObject->SetNumberField(TEXT("EMA10"), eachKLineData->EMA10);
 				klineObject->SetNumberField(TEXT("EMA20"), eachKLineData->EMA20);
@@ -561,11 +650,14 @@ void UCompanyNameIndexWidget::OnKLineDataRequestComplete(FHttpRequestPtr Request
 				klineObject->SetNumberField(TEXT("BIAS1_SMASUM"), eachKLineData->BIAS1_SMASUM);
 				klineObject->SetNumberField(TEXT("BIAS2_SMASUM"), eachKLineData->BIAS2_SMASUM);
 				klineObject->SetNumberField(TEXT("BIAS0"), eachKLineData->BIAS0);
+				klineObject->SetNumberField(TEXT("BIAS0_SMASUM"), eachKLineData->BIAS0_SMASUM);
 				klineObject->SetNumberField(TEXT("BIAS1"), eachKLineData->BIAS1);
+				klineObject->SetNumberField(TEXT("BIAS1_SMASUM"), eachKLineData->BIAS1_SMASUM);
 				klineObject->SetNumberField(TEXT("BIAS2"), eachKLineData->BIAS2);
+				klineObject->SetNumberField(TEXT("BIAS2_SMASUM"), eachKLineData->BIAS2_SMASUM);
 				klineObject->SetNumberField(TEXT("HistoryVolumeRatio"), eachKLineData->HistoryVolumeRatio);
 				klineObject->SetNumberField(TEXT("VolumeRatio"), eachKLineData->VolumeRatio);
-				klineObject->SetNumberField(TEXT("VolumeSUM"), eachKLineData->VolumeSUM);*/
+				klineObject->SetNumberField(TEXT("VolumeSUM"), eachKLineData->VolumeSUM);
 				klineArray.Add(MakeShareable(new FJsonValueObject(klineObject)));
 			}
 			jsonObject->SetStringField(TEXT("Code"), outKLineDatas_.Last()->IndexCode);
@@ -591,6 +683,8 @@ void UCompanyNameIndexWidget::OnKLineDataRequestCompleteJustSave(FHttpRequestPtr
 		FString responseString = Response->GetContentAsString();
 		TArray<TSharedPtr<FQTStockIndex>> forSaveKLineDatas;
 		if (ParseKLineDataResponse(responseString, forSaveKLineDatas)) {
+			//计算并保存技术指标数据
+			if (forSaveKLineDatas.Num() > 0 && mainCanvas)	mainCanvas->CaculateAndStoreIndicators(forSaveKLineDatas);
 			//将数据保存到本地文件
 			UE_LOG(LogTemp, Warning, TEXT("---------->> 股票日线数据获取成功,正在保存到本地文件..."));
 			TSharedPtr<FJsonObject> jsonObject = MakeShareable(new FJsonObject());
@@ -608,6 +702,69 @@ void UCompanyNameIndexWidget::OnKLineDataRequestCompleteJustSave(FHttpRequestPtr
 				klineObject->SetNumberField(TEXT("Turnover"), eachKLineData->Turnover);
 				klineObject->SetNumberField(TEXT("PriceRange"), eachKLineData->PriceRange);
 				klineObject->SetNumberField(TEXT("TurnoverRate"), eachKLineData->TurnoverRate);
+				klineObject->SetNumberField(TEXT("ConsNumber"), eachKLineData->ConsNumber);
+				klineObject->SetNumberField(TEXT("SMA5"), eachKLineData->SMA5);
+				klineObject->SetNumberField(TEXT("SMA5SUM"), eachKLineData->SMA5SUM);
+				klineObject->SetNumberField(TEXT("SMA10"), eachKLineData->SMA10);
+				klineObject->SetNumberField(TEXT("SMA10SUM"), eachKLineData->SMA10SUM);
+				klineObject->SetNumberField(TEXT("SMA20"), eachKLineData->SMA20);
+				klineObject->SetNumberField(TEXT("SMA20SUM"), eachKLineData->SMA20SUM);
+				klineObject->SetNumberField(TEXT("SMA60"), eachKLineData->SMA60);
+				klineObject->SetNumberField(TEXT("SMA60SUM"), eachKLineData->SMA60SUM);
+				klineObject->SetNumberField(TEXT("SMA240"), eachKLineData->SMA240);
+				klineObject->SetNumberField(TEXT("SMA240SUM"), eachKLineData->SMA240SUM);
+				klineObject->SetNumberField(TEXT("EMA5"), eachKLineData->EMA5);
+				klineObject->SetNumberField(TEXT("EMA10"), eachKLineData->EMA10);
+				klineObject->SetNumberField(TEXT("EMA20"), eachKLineData->EMA20);
+				klineObject->SetNumberField(TEXT("EMA60"), eachKLineData->EMA60);
+				klineObject->SetNumberField(TEXT("EMA240"), eachKLineData->EMA240);
+				klineObject->SetNumberField(TEXT("BollUpper"), eachKLineData->BollUpper);
+				klineObject->SetNumberField(TEXT("BollLower"), eachKLineData->BollLower);
+				klineObject->SetNumberField(TEXT("DIF1"), eachKLineData->DIF1);
+				klineObject->SetNumberField(TEXT("DIF2"), eachKLineData->DIF2);
+				klineObject->SetNumberField(TEXT("DIF"), eachKLineData->DIF);
+				klineObject->SetNumberField(TEXT("DEA"), eachKLineData->DEA);
+				klineObject->SetNumberField(TEXT("MACD"), eachKLineData->MACD);
+				klineObject->SetNumberField(TEXT("KDJ_RSV"), eachKLineData->KDJ_RSV);
+				klineObject->SetNumberField(TEXT("KDJ_K"), eachKLineData->KDJ_K);
+				klineObject->SetNumberField(TEXT("KDJ_D"), eachKLineData->KDJ_D);
+				klineObject->SetNumberField(TEXT("KDJ_J"), eachKLineData->KDJ_J);
+				klineObject->SetNumberField(TEXT("RSI0"), eachKLineData->RSI0);
+				klineObject->SetNumberField(TEXT("RSI0_AVGUp"), eachKLineData->RSI0_AVGUp);
+				klineObject->SetNumberField(TEXT("RSI0_AVGDown"), eachKLineData->RSI0_AVGDown);
+				klineObject->SetNumberField(TEXT("RSI1"), eachKLineData->RSI1);
+				klineObject->SetNumberField(TEXT("RSI1_AVGUp"), eachKLineData->RSI1_AVGUp);
+				klineObject->SetNumberField(TEXT("RSI1_AVGDown"), eachKLineData->RSI1_AVGDown);
+				klineObject->SetNumberField(TEXT("RSI2"), eachKLineData->RSI2);
+				klineObject->SetNumberField(TEXT("RSI2_AVGUp"), eachKLineData->RSI2_AVGUp);
+				klineObject->SetNumberField(TEXT("RSI2_AVGDown"), eachKLineData->RSI2_AVGDown);
+				klineObject->SetNumberField(TEXT("WR1"), eachKLineData->WR1);
+				klineObject->SetNumberField(TEXT("WR2"), eachKLineData->WR2);
+				klineObject->SetNumberField(TEXT("TR_Average"), eachKLineData->TR_Average);
+				klineObject->SetNumberField(TEXT("PDI_Average"), eachKLineData->PDI_Average);
+				klineObject->SetNumberField(TEXT("NDI_Average"), eachKLineData->NDI_Average);
+				klineObject->SetNumberField(TEXT("PDI"), eachKLineData->PDI);
+				klineObject->SetNumberField(TEXT("NDI"), eachKLineData->NDI);
+				klineObject->SetNumberField(TEXT("DX"), eachKLineData->DX);
+				klineObject->SetNumberField(TEXT("ADX"), eachKLineData->ADX);
+				klineObject->SetNumberField(TEXT("ADXR"), eachKLineData->ADXR);
+				klineObject->SetNumberField(TEXT("CCI_TP"), eachKLineData->CCI_TP);
+				klineObject->SetNumberField(TEXT("CCI_TPSUM"), eachKLineData->CCI_TPSUM);
+				klineObject->SetNumberField(TEXT("CCI_SMA"), eachKLineData->CCI_SMA);
+				klineObject->SetNumberField(TEXT("CCI_MAD"), eachKLineData->CCI_MAD);
+				klineObject->SetNumberField(TEXT("CCI"), eachKLineData->CCI);
+				klineObject->SetNumberField(TEXT("BIAS0_SMASUM"), eachKLineData->BIAS0_SMASUM);
+				klineObject->SetNumberField(TEXT("BIAS1_SMASUM"), eachKLineData->BIAS1_SMASUM);
+				klineObject->SetNumberField(TEXT("BIAS2_SMASUM"), eachKLineData->BIAS2_SMASUM);
+				klineObject->SetNumberField(TEXT("BIAS0"), eachKLineData->BIAS0);
+				klineObject->SetNumberField(TEXT("BIAS0_SMASUM"), eachKLineData->BIAS0_SMASUM);
+				klineObject->SetNumberField(TEXT("BIAS1"), eachKLineData->BIAS1);
+				klineObject->SetNumberField(TEXT("BIAS1_SMASUM"), eachKLineData->BIAS1_SMASUM);
+				klineObject->SetNumberField(TEXT("BIAS2"), eachKLineData->BIAS2);
+				klineObject->SetNumberField(TEXT("BIAS2_SMASUM"), eachKLineData->BIAS2_SMASUM);
+				klineObject->SetNumberField(TEXT("HistoryVolumeRatio"), eachKLineData->HistoryVolumeRatio);
+				klineObject->SetNumberField(TEXT("VolumeRatio"), eachKLineData->VolumeRatio);
+				klineObject->SetNumberField(TEXT("VolumeSUM"), eachKLineData->VolumeSUM);
 				klineArray.Add(MakeShareable(new FJsonValueObject(klineObject)));
 			}
 			jsonObject->SetStringField(TEXT("Code"), forSaveKLineDatas.Last()->IndexCode);
@@ -772,12 +929,7 @@ void UCompanyNameIndexWidget::OnIntroductionDataRequestComplete(FHttpRequestPtr 
 
 void UCompanyNameIndexWidget::FetchKLineData(const FString& StockCode, int inklt, int infqt){
 	FString url = GetKLineDataURL(StockCode, inklt, infqt);
-	TSharedRef<IHttpRequest, ESPMode::ThreadSafe> httpRequest = FHttpModule::Get().CreateRequest();
-	httpRequest->OnProcessRequestComplete().BindUObject(this,&UCompanyNameIndexWidget::OnKLineDataRequestComplete);
-	httpRequest->SetURL(url);
-	httpRequest->SetVerb(TEXT("GET"));
-	httpRequest->SetHeader("Proxy-Connection", "close");
-	httpRequest->ProcessRequest();
+	SendHttpRequest(url);
 }
 
 void UCompanyNameIndexWidget::FetchStockListData(){
@@ -910,6 +1062,56 @@ void UCompanyNameIndexWidget::FetchCompanyIntroductionData(const FString& codeOr
 	httpRequest->ProcessRequest();
 }
 
+void UCompanyNameIndexWidget::SendHttpRequest(FString url){
+	//创建HTTP请求
+	TSharedPtr<IHttpRequest> httpRequest = FHttpModule::Get().CreateRequest();
+	if (!httpRequest.IsValid()) {
+		UE_LOG(LogTemp, Error, TEXT("---------->> 创建HTTP请求失败!"));
+		return;
+	}
+	//设置请求方法和URL
+	httpRequest->SetURL(url);
+	httpRequest->SetVerb(TEXT("GET"));
+	//设置请求头
+	for (const TPair<FString, FString>& header : requestHeaders_) {
+		httpRequest->SetHeader(header.Key, header.Value);
+	}
+	//随机设置用户代理
+	int32 randomIndex = FMath::RandRange(0, userAgentList_.Num() - 1);
+	httpRequest->SetHeader(TEXT("User-Agent"), userAgentList_[randomIndex]);
+	httpRequest->OnProcessRequestComplete().BindUObject(this, &UCompanyNameIndexWidget::OnKLineDataRequestComplete);
+	//发送请求
+	if (!httpRequest->ProcessRequest()) {
+		UE_LOG(LogTemp, Error, TEXT("---------->> 发送HTTP请求失败! URL: %s"), *url);
+		return;
+	}
+}
+
+void UCompanyNameIndexWidget::SendHttpRequestJustSave(FString url){
+	//创建HTTP请求
+	TSharedPtr<IHttpRequest> httpRequest = FHttpModule::Get().CreateRequest();
+	if (!httpRequest.IsValid()) {
+		UE_LOG(LogTemp, Error, TEXT("---------->> 创建HTTP请求失败!"));
+		return;
+	}
+	//设置请求方法和URL
+	httpRequest->SetURL(url);
+	httpRequest->SetVerb(TEXT("GET"));
+	//设置请求头
+	for (const TPair<FString, FString>& header : requestHeaders_) {
+		httpRequest->SetHeader(header.Key, header.Value);
+	}
+	//随机设置用户代理
+	int32 randomIndex = FMath::RandRange(0, userAgentList_.Num() - 1);
+	httpRequest->SetHeader(TEXT("User-Agent"), userAgentList_[randomIndex]);
+	httpRequest->OnProcessRequestComplete().BindUObject(this, &UCompanyNameIndexWidget::OnKLineDataRequestCompleteJustSave);
+	//发送请求
+	if (!httpRequest->ProcessRequest()) {
+		UE_LOG(LogTemp, Error, TEXT("---------->> 发送HTTP请求失败! URL: %s"), *url);
+		return;
+	}
+}
+
 void UCompanyNameIndexWidget::GetRecentStockList(const FString& filename){
 	FString fileContent;
 	FString recentFilename = FPaths::ProjectDir() + FString::Printf(TEXT("Saved/StockDatas/%s"), *filename);
@@ -961,10 +1163,5 @@ void UCompanyNameIndexWidget::SaveRecentStockList(const FString& filename){
 
 void UCompanyNameIndexWidget::FetchKLineDataJustSave(const FString& StockCode, int inklt, int infqt) {
 	FString url = GetKLineDataURL(StockCode, inklt, infqt);
-	TSharedRef<IHttpRequest, ESPMode::ThreadSafe> httpRequest = FHttpModule::Get().CreateRequest();
-	httpRequest->OnProcessRequestComplete().BindUObject(this, &UCompanyNameIndexWidget::OnKLineDataRequestCompleteJustSave);
-	httpRequest->SetURL(url);
-	httpRequest->SetVerb(TEXT("GET"));
-	httpRequest->SetHeader("Proxy-Connection", "close");
-	httpRequest->ProcessRequest();
+	SendHttpRequestJustSave(url);
 }

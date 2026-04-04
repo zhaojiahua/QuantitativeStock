@@ -1839,12 +1839,16 @@ void UQuantitativeTradingCanves::BroadcastIndicatorValueRangeByIndicatorName(FNa
 	else if (inIndicatorName == "BIAS")IndicatorValueChangeDelegate.Broadcast(FString::Printf(TEXT("%.2f"), maxBIAS), FString::Printf(TEXT("%.2f"), minBIAS), FString::Printf(TEXT("%.2f"), (maxBIAS + minBIAS) * 0.5f));
 }
 
-void UQuantitativeTradingCanves::OnCompanyCommitted(const TArray<TSharedPtr<FQTStockIndex>>& inAllRows){
+void UQuantitativeTradingCanves::OnCompanyCommitted(const TArray<TSharedPtr<FQTStockIndex>>& inAllRows,bool isLocalData){
 	allStockIndexRows = inAllRows;
 	//根据startDate和currentDate截取数据
-	if (!allStockIndexRows.IsEmpty()) {
-		//计算并存储各种技术指标
-		CaculateAndStoreIndicators(allStockIndexRows);
+	if (!inAllRows.IsEmpty()) {
+		//计算并存储各种技术指标(如果不是本地数据,就说明是从网站down下来的新数据,要重新计算一遍技术指标)
+		if (!isLocalData) {
+			UE_LOG(LogTemp, Warning, TEXT("----------------->> 网上荡的新数据,重新计算技术指标"));
+			CaculateAndStoreIndicators(allStockIndexRows);
+		}
+		else { UE_LOG(LogTemp, Warning, TEXT("----------------->> 本地数据有效不用重新计算技术指标")); }
 		currentDate = allStockIndexRows.Last()->Date;//最新日期
 		if (startDate == 0)startDate = currentDate - 10000;//如果startDate没有被设置过,则默认显示1年的数据
 		GetIntervalRow(allStockIndexRows, visibleRows, startDate, currentDate);

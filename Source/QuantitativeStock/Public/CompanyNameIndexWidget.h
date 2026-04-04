@@ -6,12 +6,9 @@
 #include "Blueprint/UserWidget.h"
 #include "UObject/NoExportTypes.h"
 #include "Http.h"
+#include "QTCurveVectorActor.h"
 #include "CompanyNameIndexWidget.generated.h"
 
-struct FQTStockListRow;
-struct FQTCompanyAbstractRow;
-struct FQTStockIndex;//日线数据结构体
-struct FQTStockRealTimeData;//实时行情数据结构
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnIntroductionUpdate, const FQTCompanyAbstractRow&, abstractData);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnFetchKLineData);
@@ -127,6 +124,12 @@ private:
 	void FetchFundListData();
 	//发送HTTP请求获取公司介绍数据
 	void FetchCompanyIntroductionData(const FString& codeOrName);
+	void SendHttpRequest(FString url);
+	void SendHttpRequestJustSave(FString url);
+	//请求头
+	TMap<FString, FString> requestHeaders_;
+	//用户代理列表
+	TArray<FString> userAgentList_;
 
 	//在程序结束的时候保存最近访问的历史数据
 	void SaveRecentStockList(const FString& filename);
