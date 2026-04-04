@@ -778,7 +778,7 @@ void UCompanyNameIndexWidget::OnKLineDataRequestCompleteJustSave(FHttpRequestPtr
 				FString klinePath = FPaths::ProjectDir() + FString::Printf(TEXT("Saved/StockDatas/KlineDatas/%s/Kline101.json"), *(tempStockListRow->NAMECODE));
 				if (FFileHelper::SaveStringToFile(outputString, *klinePath)) {
 					UE_LOG(LogTemp, Warning, TEXT("---------->> 股票日线数据已成功保存到本地文件: %s"), *klinePath);
-					if (onFetchKLineDataToSave.IsBound())onFetchKLineDataToSave.Broadcast(buyOrSell);
+					if (onFetchKLineDataToSave.IsBound())onFetchKLineDataToSave.Broadcast();
 				}
 				else UE_LOG(LogTemp, Error, TEXT("---------->> 保存股票日线数据到本地文件失败: %s"), *klinePath);
 			}
