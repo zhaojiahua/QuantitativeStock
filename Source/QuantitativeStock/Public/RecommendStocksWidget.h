@@ -40,10 +40,12 @@ public:
 	 凡是包含设计、流片、晶圆、封装测试、EDA、IP核、制程、光刻、研发、SaaS、PaaS、云原生、中间件、算法、操作系统、机器学习、深度学习、大模型、CV、NLP、AI芯片、算法、基站、光模块、射频、天线、5G、6G、核心网、创新药、基因编辑、单抗、CAR-T、临床试验、原研、数控、机器人、自动化产线、精密制造、航天航空、碳纤维、特种合金、半导体材料、电池材料、高分子、光伏逆变器、储能BMS、固态电池、钙钛矿、氢能等这些关键词的,包含的越多越优先考虑.
 	 凡是包含代理、分销、经销、进出口、供应链、系统集成、工程总包、施工、安装、加工、组装、代工、OEM、ODM、矿产、开采、冶炼、销售、门店、电商、品牌运营等这些关键词的,包含越多越次之考虑;
 	5.技术指标分析:8个技术指标(包括成交量Volume在内),亮红灯的指标个数大于三个,筛掉.亮绿灯的个数大于3个可以考虑,绿灯个数越多越优先考虑;
-	出手股票筛选步骤:8个技术指标(包括成交量Volume在内),有两个及以上的指标亮红灯,红灯个数越多越优先考虑;
 	*/
 	UFUNCTION(BlueprintCallable, Category = "QT | Stock")
 	void StartFilterStocks();
+	//出手股票筛选步骤:8个技术指标(包括成交量Volume在内),有两个及以上的指标亮红灯,红灯个数越多越优先考虑;
+	UFUNCTION(BlueprintCallable, Category = "QT | Stock")
+	void StartFilterSellStocks();
 	//调用它里面的函数刷新K线数据
 	UPROPERTY(EditInstanceOnly, BlueprintReadWrite, Category = "QT | Assets")
 	class UCompanyNameIndexWidget* companyNameIndexWidgetBP;
@@ -62,8 +64,12 @@ protected:
 private:
 	//从json文件中读取股票列表(由于访问限制的问题,暂时只从最近访问列表中读取股票数据),并根据传入的过滤字符过滤掉不需要的股票,过滤后的结果存储在RecommendStocks_中
 	bool LoadStocksFromRecentStockListJson(const TArray<FString>& filterChars);
+	//从HoldingStockList.json,OutingStockList.json,WaitingOutStockList.json这三个文件中读取股票列表,合并后输出
+	bool LoadStocksForSellFromJson(FString jsonFileName);
 	//存放推荐股票列表的数组(每只股票对应一个权重,权重值越大越是优先推荐的股票,默认权重值是0,权重值小于0的相当于直接筛掉了)
 	TMap<FString, float> RecommendStocks_;
+	//存放出手股票列表的数组(每只股票对应一个权重,权重值越大越是优先考虑出手的股票,默认权重值是0,权重值小于0的相当于直接筛掉了)
+	TMap<FString, float> RecommendSellStocks_;
 	//存放8大指标灯颜色的数组,每只股票对应一个8个灯的数组,可以用来显示每只股票的技术指标情况
 	TMap<FString, TArray<EIndicatorColor>> StockIndicatorColors_;
 
@@ -88,13 +94,17 @@ private:
 	//记录更新F10财务数据股票的个数=RecommendStocks_.Num()时,说明所有股票的F10数据更新完了
 	int GetF10Counts;
 	UFUNCTION()
-	void PlusGetKLineCounts();
+	void PlusGetKLineCounts(int buyOrSell = 0);//0代表入手股票,1代表出手股票
 	UFUNCTION()
 	void PlusGetF10Counts();
-	//更新股票K线数据和F10财务数据
-	void UpdateStockKLineF10(const TArray<FString> stockCodes);
+	//更新股票K线数据和F10财务数据(0代表推荐入手的股票,1代表推荐出手的股票),更新完后调用AnalyzeStockDatas函数分析数据
+	void UpdateStockKLineF10(const TArray<FString> stockCodes, int buyOrSell = 0);
+	//分析出手股票只需要K线数据
+	void UpdateStockKLine(const TArray<FString> stockCodes, int buyOrSell = 1);
 	//分析财务数据,公司经营业务以及技术指标
 	void AnalyzeStockDatas(const TArray<FString> stockCodes);
+	//分析K线指标数据,挑出适合出手的股票,更新RecommendSellStocks_数组,并调用DisplayRecommendedStocks事件把推荐的股票列表显示在UI上
+	void AnalyzeSellStockDatas(const TArray<FString> stockCodes);
 	//  辅助函数：根据日期获取对应时期的EPS
 	float GetEPSByDate(const TArray<TSharedPtr<FJsonValue>>* F10Datas, int32 KLineDate);
 
@@ -122,6 +132,7 @@ private:
 	8个灯,红灯个数>4的直接筛掉,绿灯个数越多的,推荐权重越大
 	*/
 	float AnalyzeIndicatorsAndGetWeightAdjustment(const FString& stockCode);
+	float AnalyzeIndicatorsForSell(const FString& stockCode);
 	//辅助函数:加载最新日期KLine数据
 	bool LoadLatestTechnicalIndicators(const FString& stockCode, FQTStockIndex& klineIndicators);
 	// 判断各个指标并返回灯的颜色
@@ -135,6 +146,8 @@ private:
 	static EIndicatorColor CheckBIASIndicator(float BIAS0, float BIAS1, float BIAS2);
 	// 计算权重
 	static float CalculateWeight(int32 RedLightCount, int32 GreenLightCount);
+	// 计算出手权重
+	static float CalculateWeightForSell(int32 RedLightCount, int32 GreenLightCount);
 
 	// 高科技关键词库
 	static const TArray<FString> HighTechKeywords;
@@ -142,6 +155,4 @@ private:
 	static const TArray<FString> SalesAgencyKeywords;
 	// 计算匹配分数
 	static float CalculateMatchScore(const FString& Text, const TArray<FString>& Keywords);
-	//股票分析进度
-	void SetProgress(int32 processedCount);
 };
