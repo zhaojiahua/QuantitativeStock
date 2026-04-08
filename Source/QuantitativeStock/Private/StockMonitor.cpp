@@ -127,7 +127,7 @@ void UStockMonitor::SetRetryCount(int32 retryCount){
 
 void UStockMonitor::SendHttpRequest(const FString& url){
 	//创建HTTP请求
-	httpRequest_ = FHttpModule::Get().CreateRequest();
+	TSharedPtr<IHttpRequest> httpRequest_ = FHttpModule::Get().CreateRequest();
 	if(!httpRequest_.IsValid()){
 		if (onRequestFailed_.IsBound()) onRequestFailed_.Execute(500, TEXT("创建HTTP请求失败!"));
 		return;
@@ -154,7 +154,7 @@ void UStockMonitor::SendHttpRequest(const FString& url){
 
 void UStockMonitor::SendHttpRequestForF10(const FString& inurl){
 	//创建HTTP请求
-	httpRequestF10_ = FHttpModule::Get().CreateRequest();
+	TSharedPtr<IHttpRequest>httpRequestF10_ = FHttpModule::Get().CreateRequest();
 	if (!httpRequestF10_.IsValid()) {
 		if (onRequestFailed_.IsBound()) onRequestFailed_.Execute(500, TEXT("创建HTTPForF10请求失败!"));
 		return;

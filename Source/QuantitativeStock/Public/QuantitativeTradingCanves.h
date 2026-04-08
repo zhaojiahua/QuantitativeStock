@@ -5,13 +5,13 @@
 #include "CoreMinimal.h"
 #include "Blueprint/UserWidget.h"
 #include "Components/Overlay.h"
+#include "QTCurveVectorActor.h"
 #include "QuantitativeTradingCanves.generated.h"
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_ThreeParams(FOnValueChange, FString, newMaxValue, FString, newMinVallue, FString, newZeroValue);
 
 class UCurveVector;
 class UQTTreeViewItemObj;
-struct FQTStockIndex;
 UCLASS()
 class QUANTITATIVESTOCK_API UQuantitativeTradingCanves : public UUserWidget
 {
@@ -195,6 +195,11 @@ private:
 	TArray<TSharedPtr<FQTStockIndex>> visibleRows;//存放当前可见的行数据
 	//根据IndicatorName广播不同的指标最大最小值
 	void BroadcastIndicatorValueRangeByIndicatorName(FName inIndicatorName);
+
+	bool LoadLocalF10Datas(FString stockCode, TArray<FQTFinancialF10Main>& outF10datas);
+	FString GetNameCode(FString stockCode);
+	//根据传入的日期和历史F10数据,传出该日期前的最新一期数据
+	FQTFinancialF10Main GetLatestValidF10(int inDate, const TArray<FQTFinancialF10Main>& inF10datas);
 
 public:
 	//响应公司信息提交的委托

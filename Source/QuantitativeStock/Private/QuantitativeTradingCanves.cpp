@@ -2,7 +2,6 @@
 
 
 #include "QuantitativeTradingCanves.h"
-#include "QTCurveVectorActor.h"
 #include "QuantitativeTradingWidget.h"
 #include "KLineFloatWindWidget.h"
 #include "CompanyNameIndexWidget.h"
@@ -795,6 +794,18 @@ TArray<FVector2f>UQuantitativeTradingCanves::SampleDataFromDataTable() {
 }
 
 void UQuantitativeTradingCanves::CaculateAndStoreIndicators(TArray<TSharedPtr<FQTStockIndex>>& allRows) {
+	//读取F10数据,用于计算市盈率PE的历史百分位
+	TArray<FQTFinancialF10Main> f10datas;
+	LoadLocalF10Datas(allRows.Last()->IndexCode, f10datas);
+	//计算第一天的PE值
+	float epsjb = GetLatestValidF10(allRows[0]->Date, f10datas).EPSJB;
+	if (epsjb) {
+		allRows[0]->EPSJB = epsjb;
+		allRows[0]->FPE = allRows[0]->Close / epsjb;
+		allRows[0]->HistoryMaxPE = allRows[0]->FPE;
+		allRows[0]->HistoryMinPE = allRows[0]->FPE;
+	}
+	
 	//计算所有历史数据中成交量的最大值和最小值
 	for(auto& item : allRows) {
 		if (item->Volume < HistoryMinVolume)HistoryMinVolume = item->Volume;
@@ -885,6 +896,18 @@ void UQuantitativeTradingCanves::CaculateAndStoreIndicators(TArray<TSharedPtr<FQ
 	float alpha60 = 2.0f / (60 + 1);
 	float alpha240 = 2.0f / (240 + 1);
 	for (int i = 1; i < allRows.Num(); i++) {
+		//计算市盈率PE=(收盘价/最新一期的基本每股收益)
+		float epsjbtemp=GetLatestValidF10(allRows[i]->Date, f10datas).EPSJB;
+		if (epsjbtemp) {
+			allRows[i]->EPSJB = epsjbtemp;
+			allRows[i]->FPE = allRows[i]->Close / epsjbtemp;
+		}
+		if (allRows[i]->FPE > allRows[i - 1]->HistoryMaxPE)allRows[i]->HistoryMaxPE = allRows[i]->FPE;
+		else { allRows[i]->HistoryMaxPE = allRows[i - 1]->HistoryMaxPE; }
+		if (allRows[i]->FPE < allRows[i - 1]->HistoryMinPE)allRows[i]->HistoryMinPE = allRows[i]->FPE;
+		else { allRows[i]->HistoryMinPE = allRows[i - 1]->HistoryMinPE; }
+		if (allRows[i]->HistoryMaxPE > allRows[i]->HistoryMinPE) allRows[i]->HistoryPEPercentile = (allRows[i]->FPE - allRows[i]->HistoryMinPE) / (allRows[i]->HistoryMaxPE - allRows[i]->HistoryMinPE);
+
 		allRows[i]->HistoryVolumeRatio = (allRows[i]->Volume - HistoryMinVolume) / (HistoryMaxVolume - HistoryMinVolume);//计算历史数据中每个交易日的历史量比
 		if (i > 4) {//从第6个交易日开始计算SMA5;同时开始计算WR2;同时计算量比
 			allRows[i]->SMA5SUM = allRows[i - 1]->SMA5SUM - allRows[i - 5]->Close + allRows[i]->Close;
@@ -1403,6 +1426,14 @@ void UQuantitativeTradingCanves::ReCaculateAndStoreLatestDayKLine(const FQTStock
 		if (allStockIndexRows[i]->Volume < HistoryMinVolume) HistoryMinVolume = allStockIndexRows[i]->Volume;
 		allStockIndexRows[i]->HistoryVolumeRatio = (allStockIndexRows[i]->Volume - HistoryMinVolume) / (HistoryMaxVolume - HistoryMinVolume);
 	}
+	//更新市盈率PE历史百分位
+	allStockIndexRows[i]->FPE = allStockIndexRows[i]->Close / allStockIndexRows[i]->EPSJB;
+	if (allStockIndexRows[i]->FPE > allStockIndexRows[i - 1]->HistoryMaxPE)allStockIndexRows[i]->HistoryMaxPE = allStockIndexRows[i]->FPE;
+	else { allStockIndexRows[i]->HistoryMaxPE = allStockIndexRows[i - 1]->HistoryMaxPE; }
+	if (allStockIndexRows[i]->FPE < allStockIndexRows[i - 1]->HistoryMinPE)allStockIndexRows[i]->HistoryMinPE = allStockIndexRows[i]->FPE;
+	else { allStockIndexRows[i]->HistoryMinPE = allStockIndexRows[i - 1]->HistoryMinPE; }
+	if (allStockIndexRows[i]->HistoryMaxPE > allStockIndexRows[i]->HistoryMinPE) allStockIndexRows[i]->HistoryPEPercentile = (allStockIndexRows[i]->FPE - allStockIndexRows[i]->HistoryMinPE) / (allStockIndexRows[i]->HistoryMaxPE - allStockIndexRows[i]->HistoryMinPE);
+
 	//更新各种指标
 	int cycleInfos[3];
 	{//更新MACD
@@ -1855,4 +1886,56 @@ void UQuantitativeTradingCanves::OnCompanyCommitted(const TArray<TSharedPtr<FQTS
 	}
 	sampledPoints = SampleDataFromDataTable();
 	visibleCounts = visibleRows.Num();
+}
+
+bool UQuantitativeTradingCanves::LoadLocalF10Datas(FString stockCode, TArray<FQTFinancialF10Main>& outF10datas){
+	FString fileContent;
+	FString f10filepath = FPaths::ProjectDir() + FString::Printf(TEXT("Saved/StockDatas/KlineDatas/%s/F10.json"), *GetNameCode(stockCode));
+	bool loadsuccesful = FFileHelper::LoadFileToString(fileContent, *f10filepath);
+	TSharedRef<TJsonReader<>> jsonReader = TJsonReaderFactory<>::Create(fileContent);
+	TSharedPtr<FJsonObject> jsonObject;
+	if (FJsonSerializer::Deserialize(jsonReader, jsonObject)) {
+		// 获取F10数组
+		const TArray<TSharedPtr<FJsonValue>>* F10Datas = nullptr;
+		if (!jsonObject->TryGetArrayField(TEXT("F10"), F10Datas) || !F10Datas) {
+			UE_LOG(LogTemp, Warning, TEXT("%s 缺少F10字段"), *GetNameCode(stockCode));
+			return false;
+		}
+		if (F10Datas->Num() == 0) {
+			UE_LOG(LogTemp, Warning, TEXT("%s F10数据为空"), *GetNameCode(stockCode));
+			return false;
+		}
+		for (auto& f10data : *F10Datas) {
+			TSharedPtr<FJsonObject> f10Object = f10data->AsObject();
+			if (f10Object) {
+				FQTFinancialF10Main tempf10;
+				float epsjb = 0.0f, epsxs = 0.0f, bps = 0.0f;
+				int reportdate = 0;
+				f10Object->TryGetNumberField(TEXT("EPSJB"), epsjb);
+				f10Object->TryGetNumberField(TEXT("EPSXS"), epsxs);
+				f10Object->TryGetNumberField(TEXT("BPS"), bps);
+				f10Object->TryGetNumberField(TEXT("REPORTDATE"), reportdate);
+				tempf10.REPORTDATE = reportdate;
+				tempf10.EPSJB = epsjb;
+				tempf10.EPSXS = epsxs;
+				tempf10.BPS = bps;
+				outF10datas.Add(tempf10);
+			}
+		}
+		return true;
+	}
+	else { UE_LOG(LogTemp, Warning, TEXT("UQuantitativeTradingCanves::LoadF10Datas json文件序列化失败!")); return false;	}
+	return true;
+}
+
+FString UQuantitativeTradingCanves::GetNameCode(FString stockCode) {
+	TSharedPtr<FQTStockListRow>  tempStockListRow = companyNameIndexWidget->GetFQTStockListRowByCodeOrName(stockCode);//根据股票代码获取对应的本地文件路径
+	return tempStockListRow->NAMECODE;
+}
+
+FQTFinancialF10Main UQuantitativeTradingCanves::GetLatestValidF10(int inDate, const TArray<FQTFinancialF10Main>& inF10datas){
+	for (const auto& item : inF10datas) {
+		if (item.REPORTDATE <= inDate)return item;
+	}
+	return FQTFinancialF10Main();
 }

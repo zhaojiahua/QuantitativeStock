@@ -1,6 +1,5 @@
 ﻿
 #include "QuantitativeTradingWidget.h"
-#include "StockMonitor.h"
 #include "QTCurveVectorActor.h"
 #include "TimerManager.h"
 #include "Engine/World.h"
@@ -63,7 +62,7 @@ void UQuantitativeTradingWidget::NativeDestruct(){
 }
 
 void UQuantitativeTradingWidget::GetLatestF10FinanceData(const FString& StockCode, int32 insource){
-	if (!stockMonitor_) stockMonitor_ = NewObject<UStockMonitor>();
+	if (!stockMonitor_) stockMonitor_ = NewObject<UStockMonitor>(this);
 	stockMonitor_->GetStockF10FianceMainData(StockCode, insource);
 }
 
@@ -71,7 +70,7 @@ void UQuantitativeTradingWidget::StartMonitoring(const FString& inStockCode, flo
 	if (isMonitoring_) return;
 	if (inStockCode.Len() != 6) { UE_LOG(LogTemp, Warning, TEXT("--------------->> 当前的股票代码%s 不合法!启动监控失败!"), *inStockCode); return; }
 	if (!stockMonitor_) {
-		stockMonitor_ = NewObject<UStockMonitor>();
+		stockMonitor_ = NewObject<UStockMonitor>(this);
 	}
 	currentStockCode_ = inStockCode;
 	monitorInterval_ = FMath::Max(1.0f, inIntervalSeconds);
@@ -98,7 +97,7 @@ void UQuantitativeTradingWidget::StartMonitoringMultiple(const TArray<FString>& 
 	if (isMonitoring_) StopMonitoring();
 	if (StockCodes.Num() == 0) return;
 	if (!stockMonitor_) {
-		stockMonitor_ = NewObject<UStockMonitor>();
+		stockMonitor_ = NewObject<UStockMonitor>(this);
 	}
 	allStockCodes_ = StockCodes;
 	monitorInterval_ = FMath::Max(1.0f, IntervalSeconds);

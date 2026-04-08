@@ -227,6 +227,21 @@ struct FQTStockIndex : public FTableRowBase
 	//过去5天成交量的综合,用来计算量比的分母
 	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite)
 	float VolumeSUM= 0.0f;
+	//今天的PE在过去所有历史数据里的PE的相对位置,这个数值可以用来衡量当天的PE是处于过去所有PE中的什么水平
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite)
+	float HistoryPEPercentile = 0.0f;
+	//当天PE的最大值
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite)
+	float HistoryMaxPE = 0.0f;
+	//当天PE的最小值
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite)
+	float HistoryMinPE = 0.0f;
+	//距当前最新一期的基本每股收益率
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite)
+	float EPSJB = 0.0f;
+	//当天PE值
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite)
+	float FPE = 0.0f;
 };
 
 //公司的概况信息数据结构体

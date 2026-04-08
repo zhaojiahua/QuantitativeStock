@@ -658,6 +658,11 @@ void UCompanyNameIndexWidget::OnKLineDataRequestComplete(FHttpRequestPtr Request
 				klineObject->SetNumberField(TEXT("HistoryVolumeRatio"), eachKLineData->HistoryVolumeRatio);
 				klineObject->SetNumberField(TEXT("VolumeRatio"), eachKLineData->VolumeRatio);
 				klineObject->SetNumberField(TEXT("VolumeSUM"), eachKLineData->VolumeSUM);
+				klineObject->SetNumberField(TEXT("HistoryPEPercentile"), eachKLineData->HistoryPEPercentile);
+				klineObject->SetNumberField(TEXT("FPE"), eachKLineData->FPE);
+				klineObject->SetNumberField(TEXT("HistoryMaxPE"), eachKLineData->HistoryMaxPE);
+				klineObject->SetNumberField(TEXT("HistoryMinPE"), eachKLineData->HistoryMinPE);
+				klineObject->SetNumberField(TEXT("EPSJB"), eachKLineData->EPSJB);
 				klineArray.Add(MakeShareable(new FJsonValueObject(klineObject)));
 			}
 			jsonObject->SetStringField(TEXT("Code"), outKLineDatas_.Last()->IndexCode);
@@ -765,6 +770,11 @@ void UCompanyNameIndexWidget::OnKLineDataRequestCompleteJustSave(FHttpRequestPtr
 				klineObject->SetNumberField(TEXT("HistoryVolumeRatio"), eachKLineData->HistoryVolumeRatio);
 				klineObject->SetNumberField(TEXT("VolumeRatio"), eachKLineData->VolumeRatio);
 				klineObject->SetNumberField(TEXT("VolumeSUM"), eachKLineData->VolumeSUM);
+				klineObject->SetNumberField(TEXT("HistoryPEPercentile"), eachKLineData->HistoryPEPercentile);
+				klineObject->SetNumberField(TEXT("FPE"), eachKLineData->FPE);
+				klineObject->SetNumberField(TEXT("HistoryMaxPE"), eachKLineData->HistoryMaxPE);
+				klineObject->SetNumberField(TEXT("HistoryMinPE"), eachKLineData->HistoryMinPE);
+				klineObject->SetNumberField(TEXT("EPSJB"), eachKLineData->EPSJB);
 				klineArray.Add(MakeShareable(new FJsonValueObject(klineObject)));
 			}
 			jsonObject->SetStringField(TEXT("Code"), forSaveKLineDatas.Last()->IndexCode);

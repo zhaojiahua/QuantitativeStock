@@ -5,9 +5,9 @@
 #include "CoreMinimal.h"
 #include "Blueprint/UserWidget.h"
 #include "QTCurveVectorActor.h"
+#include "StockMonitor.h"
 #include <Components/TreeView.h>
 #include "QuantitativeTradingWidget.generated.h"
-
 
 // 委托：股票实时行情数据更新
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnStockRealTimeDataUpdated, const FQTStockRealTimeData&, StockRealTimeData);
@@ -17,6 +17,7 @@ DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnF10DataUpdated, const FQTFinancia
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnStockMonitorError, const FString&, StockCode, const FString&, ErrorMessage);
 
 struct FQTFinancialF10Main;
+
 UCLASS()
 class QUANTITATIVESTOCK_API UQuantitativeTradingWidget : public UUserWidget
 {
@@ -79,7 +80,7 @@ private:
 
 	//股票监控器对象
 	UPROPERTY()
-	class UStockMonitor* stockMonitor_;
+	TObjectPtr<UStockMonitor> stockMonitor_;//强引用，确保监控器对象在监控期间不会被垃圾回收
 	// 当前监控的股票代码
 	FString currentStockCode_;
 	// 所有监控的股票代码

@@ -26,6 +26,7 @@ enum class EIndicatorColor : uint8
 	Green   UMETA(DisplayName = "绿灯")
 };
 
+class UStockMonitor;
 UCLASS()
 class QUANTITATIVESTOCK_API URecommendStocksWidget : public UUserWidget
 {
@@ -74,7 +75,8 @@ private:
 	TMap<FString, TArray<EIndicatorColor>> StockIndicatorColors_;
 
 	//股票监控器实例
-	class UStockMonitor* stockMonitor_;
+	UPROPERTY()
+	TObjectPtr<UStockMonitor> stockMonitor_;//强引用，确保监控器对象在监控期间不会被垃圾回收
 	//HTTP响应处理
 	void HandleStockDataResponse(const FString& ResponseData, int32 insource = 1);
 	void HandleF10DataResponse(const FString& ResponseData, int32 insource = 0);
@@ -110,7 +112,7 @@ private:
 
 	//读取公司简介文件,提取公司的主营业务和营业范围
 	FString GetBusinessDescription(FString stockCode);
-
+public:
 	/**
 	 * 分析公司主营业务，返回业务类型和权重调整值
 	 * @param BusinessDescription 公司主营业务描述（可以是字符串数组或单个字符串）

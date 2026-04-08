@@ -243,7 +243,6 @@ bool URecommendStocksWidget::NeedToDownLoadKLineFromInternet(FString stockCode) 
 
 bool URecommendStocksWidget::LoadLocalKLineData(FString stockCode, TSharedPtr<FJsonObject>& outJsonObj){
 	FString fileContent;
-	TSharedPtr<FQTStockListRow>  tempStockListRow = companyNameIndexWidgetBP->GetFQTStockListRowByCodeOrName(stockCode);//根据股票代码获取对应的本地文件路径
 	FString klinefilepath = FPaths::ProjectDir() + FString::Printf(TEXT("Saved/StockDatas/KlineDatas/%s/Kline101.json"), *GetNameCode(stockCode));
 	bool loadsuccesful = FFileHelper::LoadFileToString(fileContent, *klinefilepath);
 	if (!loadsuccesful) {//如果加载失败返回false
@@ -254,9 +253,15 @@ bool URecommendStocksWidget::LoadLocalKLineData(FString stockCode, TSharedPtr<FJ
 }
 
 void URecommendStocksWidget::GetF10DatasByStockCode(FString stockCode){
-	if (!stockMonitor_) stockMonitor_ = NewObject<UStockMonitor>();
-	progress = (GetKLineCounts + GetF10Counts) / (2.0f * RecommendStocks_.Num());
-	UE_LOG(LogTemp, Warning, TEXT("---------->>  GetKLineDatasByStockCode::正在从网站获取%s的F10数据 JustSave --Progress %f"), *GetNameCode(stockCode), progress);
+	if (!IsValid(stockMonitor_)) stockMonitor_ = NewObject<UStockMonitor>(this);
+	if (!IsValid(stockMonitor_)) {
+		UE_LOG(LogTemp, Error, TEXT("UStockMonitor is invalid, cannot fetch F10 data for %s"), *GetNameCode(stockCode));
+		return;
+	}
+	// 防止除零错误
+	int32 StockCount = FMath::Max(RecommendStocks_.Num(), 1);
+	progress = (GetKLineCounts + GetF10Counts) / (2.0f * StockCount);
+	UE_LOG(LogTemp, Warning, TEXT("---------->>  GetF10DatasByStockCode::正在从网站获取%s的F10数据 JustSave --Progress %f"), *GetNameCode(stockCode), progress);
 	stockMonitor_->GetStockF10FianceMainDatas(stockCode);
 }
 
@@ -275,7 +280,6 @@ bool URecommendStocksWidget::NeedToDownLoadF10FromInternet(FString stockCode){
 
 bool URecommendStocksWidget::LoadLocalF10Data(FString stockCode, TSharedPtr<FJsonObject>& outJsonObj){
 	FString fileContent;
-	TSharedPtr<FQTStockListRow>  tempStockListRow = companyNameIndexWidgetBP->GetFQTStockListRowByCodeOrName(stockCode);//根据股票代码获取对应的本地文件路径
 	FString f10filepath = FPaths::ProjectDir() + FString::Printf(TEXT("Saved/StockDatas/KlineDatas/%s/F10.json"), *GetNameCode(stockCode));
 	bool loadsuccesful = FFileHelper::LoadFileToString(fileContent, *f10filepath);
 	if (!loadsuccesful) {//如果加载失败返回false
@@ -358,7 +362,7 @@ void URecommendStocksWidget::UpdateStockKLineF10(const TArray<FString> stockCode
 			delegateForF10.BindUObject(this, &URecommendStocksWidget::GetF10DatasByStockCode, stockCode);
 			GetWorld()->GetTimerManager().SetTimer(timerHandleForF10, delegateForF10, delaytimeForF10, false);
 			UE_LOG(LogTemp, Warning, TEXT("---------->>  %s 需要从网站获取F10数据, 将在%f秒后启动爬虫获取网站F10数据!"), *GetNameCode(stockCode), delaytimeForF10);
-			delaytimeForF10 += FMath::FRandRange(2.0f, 20.0f);
+			delaytimeForF10 += FMath::FRandRange(2.0f, 10.0f);
 		}
 		else { UE_LOG(LogTemp, Warning, TEXT("---------->>  %s F10数据本地有效,不需要从网站获取F10数据"), *GetNameCode(stockCode)); PlusGetF10Counts(); }
 	}
@@ -478,7 +482,7 @@ void URecommendStocksWidget::AnalyzeStockDatas(const TArray<FString> stockCodes)
 			RecommendStocks_[SecurityCode] += Weight;
 			continue;
 		}
-
+		/*
 		// ==================== 5. 计算历史市盈率百分位 ====================
 		// 先获取最新收盘价
 		const TSharedPtr<FJsonValue>& LatestKLine = KLineDatas->Last();
@@ -536,8 +540,11 @@ void URecommendStocksWidget::AnalyzeStockDatas(const TArray<FString> stockCodes)
 		float HistoryPEPercentile = (ValidCount > 0) ? (float)SmallerCount / ValidCount * 100.0f : 50.0f;
 
 		UE_LOG(LogTemp, Log, TEXT("%s 当前PE=%.2f, 历史百分位=%.2f%% (%d/%d)"), *GetNameCode(stockCode), LatestPE, HistoryPEPercentile, SmallerCount, ValidCount);
-
+		*/
 		// 根据历史百分位调整权重
+		const TSharedPtr<FJsonObject> LatestKLineObj = KLineDatas->Last()->AsObject();
+		float HistoryPEPercentile = 0.0f;
+		LatestKLineObj->SetNumberField(TEXT("HistoryPEPercentile"), HistoryPEPercentile);
 		if (HistoryPEPercentile > 70.0f){
 			UE_LOG(LogTemp, Warning, TEXT("%s 市盈率历史百分位%.2f%%, 不推荐!"), *GetNameCode(stockCode), HistoryPEPercentile);
 			RecommendStocks_[SecurityCode] -= 100.0f;

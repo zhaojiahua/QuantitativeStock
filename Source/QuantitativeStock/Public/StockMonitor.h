@@ -67,9 +67,6 @@ private:
 	// 编码转换函数
 	static FString GBK2318ToUTF8(const TArray<uint8>& GBKBytes);
 
-	TSharedPtr<IHttpRequest> httpRequest_;
-	TSharedPtr<IHttpRequest> httpRequestF10_;
-	TSharedPtr<IHttpRequest> httpRequestKLine_;
 	FOnRequestSuccess onRequestSuccess_;
 	FOnRequestSuccessF10 onRequestSuccessF10_;
 	FOnRequestSuccessKLine onRequestSuccessKLine_;

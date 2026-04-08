@@ -1,1 +1,0 @@
-CompanyNameIndexWidget.cpp :: 687 :: 解析完网上荡的K线数据调用mainCanvas->CaculateAndStoreIndicators(forSaveKLineDatas);保存
