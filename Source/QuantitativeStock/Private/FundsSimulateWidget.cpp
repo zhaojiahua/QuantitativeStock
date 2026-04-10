@@ -2,7 +2,7 @@
 #include "FundsSimulateWidget.h"
 #include "CompanyNameIndexWidget.h"
 
-void UFundsSimulateWidget::SimulateFunds(float inBalance, int inDate){
+void UFundsSimulateWidget::SimulateFunds(int inDate){
 	CalculateRecommendedStocks(inDate);//计算推荐股票列表
 	//根据推荐股票列表和当前持仓计算出交易策略
 	//先卖出再买入
@@ -11,12 +11,25 @@ void UFundsSimulateWidget::SimulateFunds(float inBalance, int inDate){
 		if (stockPair.Value > 0)sellStocks.Add(stockPair.Key);
 	}
 	for (auto& stockPair : RecommendBuyStocks_) {
-		if (stockPair.Value > 0)buyStocks.Add(stockPair.Key);
+		if (stockPair.Value > 0) {
+			UE_LOG(LogTemp, Warning, TEXT("--------->>%s推荐值为%f,加入入手推荐列表"), *stockPair.Key, stockPair.Value);
+			buyStocks.Add(stockPair.Key);
+		}
 	}
 	if (sellStocks.IsEmpty()) { UE_LOG(LogTemp, Warning, TEXT("--------->>%d出手推荐为空,今天没有适合卖出的股票"), inDate); }
-	else	SellRecommendedStocks(sellStocks);
+	else {
+		int firstOneThird = FMath::CeilToInt32(sellStocks.Num() * 0.3f);//将推荐出手的股票排前30%的卖掉
+		TArray<FString> finalSellStocks;
+		for (int i = 0; i < firstOneThird; ++i) {
+			finalSellStocks.Add(sellStocks[i]);
+		}
+		UE_LOG(LogTemp, Warning, TEXT("--------->>%d推荐出手%d只股票"), inDate, firstOneThird);
+		SellRecommendedStocks(finalSellStocks);//在蓝图里直接把这些股票卖掉就行了
+	}
 	if (buyStocks.IsEmpty()) { UE_LOG(LogTemp, Warning, TEXT("--------->>%d入手推荐为空,今天没有适合买入的股票"), inDate); }
-	else	BuyRecommendedStocks(buyStocks);
+	else {
+		BuyRecommendedStocks(buyStocks);
+	}
 }
 
 float UFundsSimulateWidget::GetStockClosePriceByDate(FString stockCode, int inDate){
@@ -25,7 +38,76 @@ float UFundsSimulateWidget::GetStockClosePriceByDate(FString stockCode, int inDa
 	else {
 		UE_LOG(LogTemp, Warning, TEXT("---------->> 加载K线数据失败,无法获取收盘价: %s"), *GetNameCode(stockCode));
 	}
-	return 0.0f;
+	return -1.0f;
+}
+
+int UFundsSimulateWidget::AddDaysToDate(int inDate, int daysToAdd){
+	//简单的日期加法,没有考虑月份和年份的变化,只适用于同一个月内的日期计算
+	int year = inDate / 10000;
+	int month = (inDate % 10000) / 100;
+	int day = inDate % 100;
+	day += daysToAdd;
+	//先判断年份是闰年还是平年,然后确定2月的天数
+	int daysInMonth;
+	if (month == 2) {
+		bool isLeapYear = (year % 4 == 0 && year % 100 != 0) || (year % 400 == 0);
+		daysInMonth = isLeapYear ? 29 : 28;
+	}
+	else if (month == 1 || month == 3 || month == 5 || month == 7 || month == 8 || month == 10 || month == 12) {
+		daysInMonth = 31;
+	}
+	else {
+		daysInMonth = 30;
+	}
+	if(day<=daysInMonth){
+		return year * 10000 + month * 100 + day;
+	}
+	else {
+		day -= daysInMonth;
+		month += 1;
+		if(month>12){
+			month = 1;
+			year += 1;
+		}
+	}
+	return year * 10000 + month * 100 + day;
+}
+
+TArray<int> UFundsSimulateWidget::GetTradingDatesFromStartDate(int startDate){
+	//加载任意一只股票的K线数据,从中提取出从startDate开始的交易日期列表
+	TArray<FString>tempStocks;
+	if (LoadListStocks(tempStocks) && tempStocks.Num() > 0) {
+		FString fileContent;
+		FString klinefilepath = FPaths::ProjectDir() + FString::Printf(TEXT("Saved/StockDatas/KlineDatas/%s/Kline101.json"), *GetNameCode(tempStocks[0]));
+		//加载K线数据
+		if (FFileHelper::LoadFileToString(fileContent, *klinefilepath)) {
+			TSharedPtr<FJsonObject> jsonObject;
+			TSharedRef<TJsonReader<>> jsonReader = TJsonReaderFactory<>::Create(fileContent);
+			if (FJsonSerializer::Deserialize(jsonReader, jsonObject) && jsonObject.IsValid()) {
+				const TArray<TSharedPtr<FJsonValue>>* klineArray;
+				if (jsonObject->TryGetArrayField(TEXT("Klines"), klineArray)) {
+					TArray<int> tradingDates;
+					for(auto& klineValue : *klineArray){
+						TSharedPtr<FJsonObject> klineObj = klineValue->AsObject();
+						if (klineObj.IsValid()) {
+							int32 KLineDate;
+							klineObj->TryGetNumberField(TEXT("Date"), KLineDate);
+							if (KLineDate >= startDate) {
+								//添加到交易日期列表里
+								tradingDates.Add(KLineDate);
+							}
+						}
+					}
+					return tradingDates;
+				}
+				else UE_LOG(LogTemp, Warning, TEXT("---------->> UFundsSimulateWidget::GetTradingDatesFromStartDate::K线数据文件缺少KLineDatas字段!"));
+			}
+			else UE_LOG(LogTemp, Warning, TEXT("---------->> UFundsSimulateWidget::GetTradingDatesFromStartDate::解析K线数据文件失败!"));
+		}
+		else UE_LOG(LogTemp, Warning, TEXT("---------->> UFundsSimulateWidget::GetTradingDatesFromStartDate::加载K线数据文件失败: %s"), *klinefilepath);
+	}
+	else { UE_LOG(LogTemp, Warning, TEXT("---------->> UFundsSimulateWidget::GetTradingDatesFromStartDate::获取最近访问股票列表失败!")); }
+	return TArray<int>();
 }
 
 void UFundsSimulateWidget::CalculateRecommendedStocks(int inDate){
@@ -41,7 +123,7 @@ void UFundsSimulateWidget::CalculateRecommendedStocks(int inDate){
 	}
 	TArray<FString> recentStocks;
 	//加载最近的股票列表(用于计算推荐入手的股票)
-	bool bloadsuccesful = LoadListStocks(TEXT("RecentStocks.json"), recentStocks);
+	bool bloadsuccesful = LoadListStocks(recentStocks);
 	if(bloadsuccesful){
 		UE_LOG(LogTemp, Warning, TEXT("---------->> 成功加载最近的股票列表!"));
 		for(auto&stock:recentStocks){
@@ -148,12 +230,16 @@ bool UFundsSimulateWidget::LoadStockF10Data(FString stockCode, int inDate, FQTFi
 }
 
 FString UFundsSimulateWidget::GetNameCode(FString stockCode) {
-	TSharedPtr<FQTStockListRow>  tempStockListRow = companyNameIndexWidgetBP->GetFQTStockListRowByCodeOrName(stockCode);//根据股票代码获取对应的本地文件路径
-	return tempStockListRow->NAMECODE;
+	if (companyNameIndexWidgetBP) {
+		TSharedPtr<FQTStockListRow>  tempStockListRow = companyNameIndexWidgetBP->GetFQTStockListRowByCodeOrName(stockCode);//根据股票代码获取对应的本地文件路径
+		return tempStockListRow->NAMECODE;
+	}
+	else { UE_LOG(LogTemp, Warning, TEXT("---------->> companyNameIndexWidgetBP未设置,无法获取股票名称代码: %s"), *stockCode); }
+	return stockCode;//如果companyNameIndexWidgetBP没有设置成功,就直接返回股票代码
 }
 
-bool UFundsSimulateWidget::LoadListStocks(const FString& fileName, TArray<FString>& outStocks){
-	FString stockListFilename = FPaths::ProjectDir() + FString::Printf(TEXT("Saved/StockDatas/%s"), *fileName);
+bool UFundsSimulateWidget::LoadListStocks(TArray<FString>& outStocks){
+	FString stockListFilename = FPaths::ProjectDir() + FString("Saved/StockDatas/RecentStockList.json");
 	FString fileContent;
 	bool loadsuccesful = FFileHelper::LoadFileToString(fileContent, *stockListFilename);
 	if (loadsuccesful) {
@@ -243,7 +329,7 @@ float UFundsSimulateWidget::AnalyzeIndicatorsForSell(FString instock, const FQTS
 }
 
 float UFundsSimulateWidget::AnalyzeF10AndIndicatorsForBuy(FString stockCode, const FQTStockIndex& Indicators, const FQTFinancialF10Main& inF10Data){
-	UE_LOG(LogTemp, Warning, TEXT("Analyzing stock: %s"), *GetNameCode(stockCode));
+	UE_LOG(LogTemp, Warning, TEXT("AnalyzeF10AndIndicatorsForBuy:: Analyzing stock: %s"), *GetNameCode(stockCode));
 
 	// ==================== 3. 财务指标筛选 ====================
 	// ROE < 0 或 资产负债率 > 80 或 每股经营现金流 < 0，直接排除
@@ -339,7 +425,9 @@ float UFundsSimulateWidget::AnalyzeF10AndIndicatorsForBuy(FString stockCode, con
 
 	// 5. 计算权重调整
 	float WeightAdjustment = URecommendStocksWidget::CalculateWeight(OutRedLightCount, OutGreenLightCount);
-	UE_LOG(LogTemp, Log, TEXT("权重调整: %.2f"), WeightAdjustment);
+	UE_LOG(LogTemp, Log, TEXT("交易指标红绿灯的权重调整: %.2f"), WeightAdjustment);
+	Weight += WeightAdjustment;
+	UE_LOG(LogTemp, Log, TEXT("最终推荐权重: %.2f"), Weight);
 	
 	return Weight;
 }

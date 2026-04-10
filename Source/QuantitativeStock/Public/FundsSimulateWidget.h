@@ -21,7 +21,7 @@ public:
 	根据推荐排序交易.将推荐出手的股票排前30%的卖掉.推荐入手的股票如果超过5只,把当前资金可用余额按照0.08,0.14,0.2,0.26,0.32的比例分成5份,分别买入前5只股票,不满5只的,有几只买几只.
 	*/
 	UFUNCTION(BlueprintCallable, Category = "QT | FundsSimulate")
-	void SimulateFunds(float inBalance, int inDate);
+	void SimulateFunds(int inDate);
 	//根据股票和日期返回当时的收盘价,如果没有数据了就返回-1
 	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "QT | Stock")
 	float GetStockClosePriceByDate(FString stockCode, int inDate);
@@ -36,6 +36,20 @@ public:
 	UPROPERTY(EditInstanceOnly, BlueprintReadWrite, Category = "QT | Assets")
 	class UCompanyNameIndexWidget* companyNameIndexWidgetBP;
 
+	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "QT | Stock")
+	FString GetNameCode(FString stockCode);
+
+	//存放出手股票列表的数组,也就是持仓的股票(每只股票对应一个权重,权重值越大越是优先考虑出手的股票,默认权重值是0,权重值小于0的相当于直接筛掉了)
+	UPROPERTY(EditInstanceOnly, BlueprintReadWrite, Category = "QT | Params")
+	TMap<FString, float> RecommendSellStocks_;
+
+	//日期加法,根据输入的日期和加的天数返回新的日期
+	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "QT | Stock")
+	int AddDaysToDate(int inDate, int daysToAdd);
+	//获取交易日期列表,根据输入的开始日期返回到至今的交易日期列表
+	UFUNCTION(BlueprintCallable, Category = "QT | Stock")
+	TArray<int> GetTradingDatesFromStartDate(int startDate);
+
 private:
 	//加载本地K线可F10数据,计算技术指标,并根据技术指标和推荐算法计算出推荐买入和卖出的股票列表分别存放在RecommendBuyStocks_和RecommendSellStocks_里,键是股票代码,值是权重值(权重值越大越优先推荐买入或卖出)
 	void CalculateRecommendedStocks(int inDate);
@@ -43,15 +57,12 @@ private:
 	bool LoadStockKLineData(FString stockCode, int inDate, FQTStockIndex& outKLineData);
 	//加载本地F10数据(根据日期加载当时有效的数据就行)
 	bool LoadStockF10Data(FString stockCode, int inDate, FQTFinancialF10Main& outF10Data);
-	FString GetNameCode(FString stockCode);
 
-	//从指定路径加载股票列表
-	bool LoadListStocks(const FString& fileName,TArray<FString>& outStocks);
+	//从最近访问中获取股票列表
+	bool LoadListStocks(TArray<FString>& outStocks);
 
 	//存放推荐入手股票列表的数组(每只股票对应一个权重,权重值越大越是优先推荐的股票,默认权重值是0,权重值小于0的相当于直接筛掉了)
 	TMap<FString, float> RecommendBuyStocks_;
-	//存放出手股票列表的数组,也就是持仓的股票(每只股票对应一个权重,权重值越大越是优先考虑出手的股票,默认权重值是0,权重值小于0的相当于直接筛掉了)
-	TMap<FString, float> RecommendSellStocks_;
 
 	float AnalyzeIndicatorsForSell(FString instock, const FQTStockIndex& indicatorDatas);
 	float AnalyzeF10AndIndicatorsForBuy(FString instock, const FQTStockIndex& indicatorData,const FQTFinancialF10Main& inF10Data);
