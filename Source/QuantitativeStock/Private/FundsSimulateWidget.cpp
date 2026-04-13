@@ -2,18 +2,20 @@
 #include "FundsSimulateWidget.h"
 #include "CompanyNameIndexWidget.h"
 
-void UFundsSimulateWidget::SimulateFunds(int inDate){
-	CalculateRecommendedStocks(inDate);//计算推荐股票列表
+void UFundsSimulateWidget::SimulateFunds(int inDate, float inBalance){
+	CalculateRecommendedStocks(inDate, inBalance);//计算推荐股票列表
 	//根据推荐股票列表和当前持仓计算出交易策略
 	//先卖出再买入
 	TArray<FString> sellStocks, buyStocks;
 	for (auto& stockPair : RecommendSellStocks_) {
 		if (stockPair.Value > 0)sellStocks.Add(stockPair.Key);
 	}
-	for (auto& stockPair : RecommendBuyStocks_) {
-		if (stockPair.Value > 0) {
-			UE_LOG(LogTemp, Warning, TEXT("--------->>%s推荐值为%f,加入入手推荐列表"), *stockPair.Key, stockPair.Value);
-			buyStocks.Add(stockPair.Key);
+	if (inBalance > 0.2f) {
+		for (auto& stockPair : RecommendBuyStocks_) {
+			if (stockPair.Value > 40) {//推荐权重大于40的加入推荐列表
+				UE_LOG(LogTemp, Warning, TEXT("--------->>%s推荐值为%f,加入入手推荐列表"), *stockPair.Key, stockPair.Value);
+				buyStocks.Add(stockPair.Key);
+			}
 		}
 	}
 	if (sellStocks.IsEmpty()) { UE_LOG(LogTemp, Warning, TEXT("--------->>%d出手推荐为空,今天没有适合卖出的股票"), inDate); }
@@ -110,7 +112,7 @@ TArray<int> UFundsSimulateWidget::GetTradingDatesFromStartDate(int startDate){
 	return TArray<int>();
 }
 
-void UFundsSimulateWidget::CalculateRecommendedStocks(int inDate){
+void UFundsSimulateWidget::CalculateRecommendedStocks(int inDate, float inBalance){
 	//先根据持仓的股票计算出推荐卖出的股票列表(根据推荐权重,对RecommendSellStocks_进行降序排序即可)
 	if (RecommendSellStocks_.Num() > 0) {
 		for (auto& stockPair : RecommendSellStocks_) {
@@ -120,6 +122,11 @@ void UFundsSimulateWidget::CalculateRecommendedStocks(int inDate){
 		}
 		//对RecommendSellStocks_进行降序排序
 		RecommendSellStocks_.ValueSort([](float A, float B) {	return A > B; });
+	}
+	if (inBalance < 0.2f) { 
+		UE_LOG(LogTemp, Warning, TEXT("---------->> 可用余额小于20%%,无法买入股票,入手推荐列表不用分析,清空RecommendBuyStocks_!"));
+		RecommendBuyStocks_.Empty();
+		return; 
 	}
 	TArray<FString> recentStocks;
 	//加载最近的股票列表(用于计算推荐入手的股票)

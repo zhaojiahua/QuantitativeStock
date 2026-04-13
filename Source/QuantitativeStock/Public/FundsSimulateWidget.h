@@ -21,7 +21,7 @@ public:
 	根据推荐排序交易.将推荐出手的股票排前30%的卖掉.推荐入手的股票如果超过5只,把当前资金可用余额按照0.08,0.14,0.2,0.26,0.32的比例分成5份,分别买入前5只股票,不满5只的,有几只买几只.
 	*/
 	UFUNCTION(BlueprintCallable, Category = "QT | FundsSimulate")
-	void SimulateFunds(int inDate);
+	void SimulateFunds(int inDate,float inBalance);
 	//根据股票和日期返回当时的收盘价,如果没有数据了就返回-1
 	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "QT | Stock")
 	float GetStockClosePriceByDate(FString stockCode, int inDate);
@@ -52,7 +52,7 @@ public:
 
 private:
 	//加载本地K线可F10数据,计算技术指标,并根据技术指标和推荐算法计算出推荐买入和卖出的股票列表分别存放在RecommendBuyStocks_和RecommendSellStocks_里,键是股票代码,值是权重值(权重值越大越优先推荐买入或卖出)
-	void CalculateRecommendedStocks(int inDate);
+	void CalculateRecommendedStocks(int inDate,float inBalance);
 	//加载本地K线数据(根据日期加载当时有效的数据就行)
 	bool LoadStockKLineData(FString stockCode, int inDate, FQTStockIndex& outKLineData);
 	//加载本地F10数据(根据日期加载当时有效的数据就行)

@@ -703,7 +703,6 @@ float URecommendStocksWidget::AnalyzeBusinessAndGetWeightAdjustment(const FStrin
 	// 计算销售代理匹配分数
 	float SalesAgencyScore = CalculateMatchScore(BusinessDescription, SalesAgencyKeywords);
 
-	UE_LOG(LogTemp, Log, TEXT("业务分析: %s"), *BusinessDescription);
 	UE_LOG(LogTemp, Log, TEXT("  高科技匹配度: %.2f, 销售代理匹配度: %.2f"), HighTechScore, SalesAgencyScore);
 
 	// 判断业务类型
