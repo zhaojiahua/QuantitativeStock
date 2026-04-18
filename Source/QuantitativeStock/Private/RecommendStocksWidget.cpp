@@ -305,7 +305,7 @@ void URecommendStocksWidget::PlusGetKLineCounts(int buyOrSell){
 				//开始分析财务指标数据
 				TArray<FString> allStocks;
 				RecommendStocks_.GenerateKeyArray(allStocks);
-				AnalyzeStockDatas(allStocks);
+				AnalyzeStockDatasForBuy(allStocks);
 			}
 		}
 	}
@@ -331,7 +331,7 @@ void URecommendStocksWidget::PlusGetF10Counts(){
 			//开始分析财务指标数据
 			TArray<FString> allStocks;
 			RecommendStocks_.GenerateKeyArray(allStocks);
-			AnalyzeStockDatas(allStocks);
+			AnalyzeStockDatasForBuy(allStocks);
 		}
 	}
 }
@@ -384,188 +384,35 @@ void URecommendStocksWidget::UpdateStockKLine(const TArray<FString> stockCodes, 
 			delegateForKLine.BindUObject(this, &URecommendStocksWidget::GetKLineDatasByStockCode, stockCode);
 			GetWorld()->GetTimerManager().SetTimer(timerHandleForKLine, delegateForKLine, delaytimeForKLine, false);
 			UE_LOG(LogTemp, Warning, TEXT("---------->>  %s 需要从网站获取K线数据, 将在%f秒后启动爬虫获取网站K线数据!"), *GetNameCode(stockCode), delaytimeForKLine);
-			delaytimeForKLine += FMath::FRandRange(5.0f, 40.0f);
+			delaytimeForKLine += FMath::FRandRange(6.0f, 60.0f);
 		}
 		else { UE_LOG(LogTemp, Warning, TEXT("---------->>  %s K线数据本地有效,不需要从网站获取K线数据"), *GetNameCode(stockCode)); PlusGetKLineCounts(buyOrSell); }
 	}
 }
 
-void URecommendStocksWidget::AnalyzeStockDatas(const TArray<FString> stockCodes){
+void URecommendStocksWidget::AnalyzeStockDatasForBuy(const TArray<FString> stockCodes){
 	progress = 0.0f;
 	int tempI = 0;
 	for (const auto& stockCode : stockCodes)	{
 		tempI++;
-		UE_LOG(LogTemp, Warning, TEXT("Analyzing stock: %s"), *stockCode);
-		// ==================== 1. 加载并验证F10数据 ====================
-		TSharedPtr<FJsonObject> F10JsonObject;
-		bool bLoadSuccess = LoadLocalF10Data(stockCode, F10JsonObject);
-		if (!bLoadSuccess || !F10JsonObject.IsValid())	{
-			UE_LOG(LogTemp, Warning, TEXT("%s 本地F10财务数据加载失败!"), *GetNameCode(stockCode));
+		UE_LOG(LogTemp, Warning, TEXT("URecommendStocksWidget::AnalyzeStockDatas:: %s"), *stockCode);
+		// 加载并验证F10数据
+		FQTFinancialF10Main nestF10Data;
+		if (!LoadLatestF10Datas(stockCode, nestF10Data)) {
+			UE_LOG(LogTemp, Warning, TEXT("AnalyzeIndicatorsAndGetWeightAdjustment: %s 最新F10数据加载失败"), *GetNameCode(stockCode));
 			continue;
 		}
-		// 获取F10数组
-		const TArray<TSharedPtr<FJsonValue>>* F10Datas = nullptr;
-		if (!F10JsonObject->TryGetArrayField(TEXT("F10"), F10Datas) || !F10Datas) {
-			UE_LOG(LogTemp, Warning, TEXT("%s 缺少F10字段"), *GetNameCode(stockCode));
+		// 加载技术指标数据
+		FQTStockIndex nestKlineData;
+		if (!LoadLatestTechnicalIndicators(stockCode, nestKlineData)) {
+			UE_LOG(LogTemp, Warning, TEXT("AnalyzeIndicatorsAndGetWeightAdjustment: %s 最新技术指标加载失败"), *GetNameCode(stockCode));
 			continue;
 		}
-		if (F10Datas->Num() == 0)	{
-			UE_LOG(LogTemp, Warning, TEXT("%s F10数据为空"), *GetNameCode(stockCode));
-			continue;
-		}
-		// ==================== 2. 解析最新财务数据 ====================
-		const TSharedPtr<FJsonValue>& LatestF10Value = (*F10Datas)[0];
-		if (!LatestF10Value.IsValid()){
-			UE_LOG(LogTemp, Warning, TEXT("%s 最新F10数据无效"), *GetNameCode(stockCode));
-			continue;
-		}
-		const TSharedPtr<FJsonObject> LatestF10Object = LatestF10Value->AsObject();
-		if (!LatestF10Object || !LatestF10Object.IsValid()){
-			UE_LOG(LogTemp, Warning, TEXT("%s F10数据不是JSON对象"), *GetNameCode(stockCode));
-			continue;
-		}
-
-		// 安全获取各字段（分别检查每个字段）
-		FString SecurityCode;
-		float ROE = 0.0f, DebtRatio = 0.0f, CashFlowPerShare = 0.0f, EPS = 0.0f;
-		bool bHasAllFields = true;
-		bHasAllFields &= LatestF10Object->TryGetStringField(TEXT("SECURITY_CODE"), SecurityCode);
-		bHasAllFields &= LatestF10Object->TryGetNumberField(TEXT("ROEJQ"), ROE);
-		bHasAllFields &= LatestF10Object->TryGetNumberField(TEXT("ZCFZL"), DebtRatio);
-		bHasAllFields &= LatestF10Object->TryGetNumberField(TEXT("MGJYXJJE"), CashFlowPerShare);
-		bHasAllFields &= LatestF10Object->TryGetNumberField(TEXT("EPSJB"), EPS);
-		if (!bHasAllFields)	{
-			UE_LOG(LogTemp, Warning, TEXT("%s F10财务数据缺失必要字段"), *GetNameCode(stockCode));
-			continue;
-		}
-
-		// ==================== 3. 财务指标筛选 ====================
-		// ROE < 0 或 资产负债率 > 80 或 每股经营现金流 < 0，直接排除
-		if (ROE < 0 || DebtRatio > 80.0f || CashFlowPerShare < 0)	{
-			UE_LOG(LogTemp, Warning, TEXT("%s 财务指标不合格: ROE=%.2f, 负债率=%.2f%%, 现金流=%.2f, 不推荐!"), *GetNameCode(stockCode), ROE, DebtRatio, CashFlowPerShare);
-			RecommendStocks_[SecurityCode] -= 100.0f;
-			continue;
-		}
-
-		// 计算基础权重
-		float Weight = 0.0f;
-		// 资产负债率 < 60% 优先
-		if (DebtRatio < 60.0f){
-			float DebtBonus = (60.0f - DebtRatio) * 0.2f;
-			Weight += DebtBonus;
-			UE_LOG(LogTemp, Log, TEXT("%s 资产负债率%.2f%%, 加分%.2f"),	*GetNameCode(stockCode), DebtRatio, DebtBonus);
-		}
-
-		// 每股经营现金流 > 每股收益 优先
-		if (CashFlowPerShare > EPS){
-			float CashBonus = (CashFlowPerShare - EPS) * 0.5f;
-			Weight += CashBonus;
-			UE_LOG(LogTemp, Log, TEXT("%s 现金流%.2f > EPS%.2f, 加分%.2f"), *GetNameCode(stockCode), CashFlowPerShare, EPS, CashBonus);
-		}
-
-		// ROE 越高越优先
-		float ROEBonus = ROE * 3.0f;
-		Weight += ROEBonus;
-		UE_LOG(LogTemp, Log, TEXT("%s ROE=%.2f%%, 加分%.2f"), *GetNameCode(stockCode), ROE, ROEBonus);
-
-		// ==================== 4. 加载K线数据 ====================
-		TSharedPtr<FJsonObject> KLineJsonObject;
-		bLoadSuccess = LoadLocalKLineData(stockCode, KLineJsonObject);
-		if (!bLoadSuccess || !KLineJsonObject.IsValid()){
-			UE_LOG(LogTemp, Warning, TEXT("%s K线数据加载失败"), *GetNameCode(stockCode));
-			RecommendStocks_[SecurityCode] += Weight;
-			continue;
-		}
-		const TArray<TSharedPtr<FJsonValue>>* KLineDatas = nullptr;
-		if (!KLineJsonObject->TryGetArrayField(TEXT("Klines"), KLineDatas) || !KLineDatas || KLineDatas->Num() == 0){
-			UE_LOG(LogTemp, Warning, TEXT("%s K线数据缺失或为空"), *GetNameCode(stockCode));
-			RecommendStocks_[SecurityCode] += Weight;
-			continue;
-		}
-		/*
-		// ==================== 5. 计算历史市盈率百分位 ====================
-		// 先获取最新收盘价
-		const TSharedPtr<FJsonValue>& LatestKLine = KLineDatas->Last();
-		if (!LatestKLine.IsValid()){
-			UE_LOG(LogTemp, Warning, TEXT("%s 最新K线数据无效"), *GetNameCode(stockCode));
-			RecommendStocks_[SecurityCode] += Weight;
-			continue;
-		}
-		const TSharedPtr<FJsonObject> LatestKLineObj = LatestKLine->AsObject();
-		if (!LatestKLineObj || !LatestKLineObj.IsValid()){
-			UE_LOG(LogTemp, Warning, TEXT("%s 最新K线不是JSON对象"), *GetNameCode(stockCode));
-			RecommendStocks_[SecurityCode] += Weight;
-			continue;
-		}
-
-		float LatestClosePrice = 0.0f;
-		LatestKLineObj->TryGetNumberField(TEXT("Close"), LatestClosePrice);
-
-		// 计算最新市盈率（使用最新EPS）
-		float LatestPE = (EPS > 0.001f) ? (LatestClosePrice / EPS) : 0.0f;
-		if (LatestPE <= 0.0f)	{
-			UE_LOG(LogTemp, Warning, TEXT("%s 市盈率计算无效: 股价=%.2f, EPS=%.2f"), *GetNameCode(stockCode), LatestClosePrice, EPS);
-			RecommendStocks_[SecurityCode] += Weight;
-			continue;
-		}
-
-		// 遍历历史K线，计算历史市盈率百分位
-		int32 SmallerCount = 0;
-		int32 ValidCount = 0;
-
-		for (int32 i = 0; i < KLineDatas->Num(); ++i)	{
-			const TSharedPtr<FJsonValue>& KLineValue = (*KLineDatas)[i];
-			if (!KLineValue.IsValid()) continue;
-			const TSharedPtr<FJsonObject> KLineObj = KLineValue->AsObject();
-			if (!KLineObj || !KLineObj.IsValid()) continue;
-			// 获取该日期的收盘价
-			float ClosePrice = 0.0f;
-			KLineObj->TryGetNumberField(TEXT("Close"), ClosePrice);
-			// 获取对应时期的EPS（根据日期匹配）
-			int32 KLineDate = 0;
-			KLineObj->TryGetNumberField(TEXT("Date"), KLineDate);
-
-			float PeriodEPS = GetEPSByDate(F10Datas, KLineDate);
-			if (PeriodEPS <= 0.0f) continue;
-
-			float PeriodPE = ClosePrice / PeriodEPS;
-			if (PeriodPE <= 0.0f) continue;
-
-			ValidCount++;
-			if (PeriodPE < LatestPE){
-				SmallerCount++;
-			}
-		}
-		// 计算历史百分位
-		float HistoryPEPercentile = (ValidCount > 0) ? (float)SmallerCount / ValidCount * 100.0f : 50.0f;
-
-		UE_LOG(LogTemp, Log, TEXT("%s 当前PE=%.2f, 历史百分位=%.2f%% (%d/%d)"), *GetNameCode(stockCode), LatestPE, HistoryPEPercentile, SmallerCount, ValidCount);
-		*/
-		// 根据历史百分位调整权重
-		const TSharedPtr<FJsonObject> LatestKLineObj = KLineDatas->Last()->AsObject();
-		float HistoryPEPercentile = 0.0f;
-		LatestKLineObj->SetNumberField(TEXT("HistoryPEPercentile"), HistoryPEPercentile);
-		if (HistoryPEPercentile > 70.0f){
-			UE_LOG(LogTemp, Warning, TEXT("%s 市盈率历史百分位%.2f%%, 不推荐!"), *GetNameCode(stockCode), HistoryPEPercentile);
-			RecommendStocks_[SecurityCode] -= 100.0f;
-			continue;
-		}
-		else if (HistoryPEPercentile < 30.0f){
-			float PercentileBonus = (100.0f - HistoryPEPercentile) * 0.2f;
-			Weight += PercentileBonus;
-			UE_LOG(LogTemp, Log, TEXT("%s 市盈率历史百分位低, 加分%.2f"), *GetNameCode(stockCode), PercentileBonus);
-		}
-
-		//主营业务分析(高科技板块的股票推荐权重增加,销售代理类型的公司推荐权重减小)
-		FString businessDescription = GetBusinessDescription(stockCode);
-		EBusinessCategory businessCategory;
-		Weight += AnalyzeBusinessAndGetWeightAdjustment(businessDescription, businessCategory);
-		//技术指标分析
-		Weight += AnalyzeIndicatorsAndGetWeightAdjustment(stockCode);
+		float Weight = AnalyzeStockForBuy(stockCode, nestKlineData, nestF10Data);
 
 		// 最终权重
-		RecommendStocks_[SecurityCode] += Weight;
-		UE_LOG(LogTemp, Log, TEXT("%s 最终权重: %.2f"), *GetNameCode(stockCode), RecommendStocks_[SecurityCode]);
+		RecommendStocks_[stockCode] += Weight;
+		UE_LOG(LogTemp, Log, TEXT("%s 最终权重: %.2f"), *GetNameCode(stockCode), RecommendStocks_[stockCode]);
 	}
 	//分析完毕之后根据权重排序并选中前10只股票(如果前10只股票的推荐权重都>=0),推送给界面显示
 	RecommendStocks_.ValueSort([](float A, float B) { return A > B; });
@@ -593,7 +440,12 @@ void URecommendStocksWidget::AnalyzeSellStockDatas(const TArray<FString> stockCo
 	for (const auto& stockCode : stockCodes) {
 		UE_LOG(LogTemp, Warning, TEXT("Analyzing stock for sell: %s"), *stockCode);
 		//技术指标分析
-		float Weight = AnalyzeIndicatorsForSell(stockCode);
+		// 1. 加载技术指标数据
+		FQTStockIndex Indicators;
+		if (!LoadLatestTechnicalIndicators(stockCode, Indicators)) {
+			UE_LOG(LogTemp, Warning, TEXT("AnalyzeIndicatorsForSell: %s 技术指标加载失败"), *GetNameCode(stockCode));
+		}
+		float Weight = AnalyzeIndicatorsForSell(stockCode, Indicators);
 		// 最终权重
 		RecommendSellStocks_[stockCode] += Weight;
 		UE_LOG(LogTemp, Log, TEXT("%s 最终权重: %.2f"), *GetNameCode(stockCode), RecommendSellStocks_[stockCode]);
@@ -753,79 +605,7 @@ float URecommendStocksWidget::AnalyzeBusinessAndGetWeightAdjustment(const FStrin
 	}
 }
 
-float URecommendStocksWidget::AnalyzeIndicatorsAndGetWeightAdjustment(const FString& StockCode){
-	// 1. 加载技术指标数据
-	FQTStockIndex Indicators;
-	if (!LoadLatestTechnicalIndicators(StockCode, Indicators)) {
-		UE_LOG(LogTemp, Warning, TEXT("AnalyzeIndicatorsAndGetWeightAdjustment: %s 技术指标加载失败"), *GetNameCode(StockCode));
-		return 0.0f;
-	}
-
-	// 2. 判断每个指标的颜色
-	TArray<EIndicatorColor> Colors;
-	// Volume历史百分位
-	EIndicatorColor VolumeColor = CheckVolumeIndicator(Indicators.HistoryVolumeRatio);
-	Colors.Add(VolumeColor);
-	// MACD
-	EIndicatorColor MACDColor = CheckMACDIndicator(Indicators.MACD);
-	Colors.Add(MACDColor);
-	// KDJ
-	EIndicatorColor KDJColor = CheckKDJIndicator(Indicators.KDJ_J);
-	Colors.Add(KDJColor);
-	// RSI
-	EIndicatorColor RSIColor = CheckRSIIndicator(Indicators.RSI1, Indicators.RSI2);
-	Colors.Add(RSIColor);
-	// WR
-	EIndicatorColor WRColor = CheckWRIndicator(Indicators.WR1, Indicators.WR2);
-	Colors.Add(WRColor);
-	// DMI
-	EIndicatorColor DMIColor = CheckDMIIndicator(Indicators.PDI, Indicators.NDI, Indicators.ADX);
-	Colors.Add(DMIColor);
-	// CCI
-	EIndicatorColor CCIColor = CheckCCIIndicator(Indicators.CCI);
-	Colors.Add(CCIColor);
-	// BIAS
-	EIndicatorColor BIASColor = CheckBIASIndicator(Indicators.BIAS0, Indicators.BIAS1, Indicators.BIAS2);
-	Colors.Add(BIASColor);
-	StockIndicatorColors_.Add(StockCode, Colors);
-
-	// 3. 统计红灯和绿灯个数
-	int OutRedLightCount = 0, OutGreenLightCount = 0;
-	for (EIndicatorColor Color : Colors)	{
-		if (Color == EIndicatorColor::Red){
-			OutRedLightCount++;
-		}
-		else if (Color == EIndicatorColor::Green){
-			OutGreenLightCount++;
-		}
-	}
-
-	// 4. 日志输出
-	UE_LOG(LogTemp, Log, TEXT("=== %s 技术指标分析 ==="), *StockCode);
-	UE_LOG(LogTemp, Log, TEXT("Volume历史百分位: %.2f -> %s"), Indicators.HistoryVolumeRatio, VolumeColor == EIndicatorColor::Red ? TEXT("红灯") : (VolumeColor == EIndicatorColor::Green ? TEXT("绿灯") : TEXT("无灯")));
-	UE_LOG(LogTemp, Log, TEXT("MACD: %.3f -> %s"), Indicators.MACD, MACDColor == EIndicatorColor::Red ? TEXT("红灯") : (MACDColor == EIndicatorColor::Green ? TEXT("绿灯") : TEXT("无灯")));
-	UE_LOG(LogTemp, Log, TEXT("KDJ_J: %.2f -> %s"), Indicators.KDJ_J, KDJColor == EIndicatorColor::Red ? TEXT("红灯") : (KDJColor == EIndicatorColor::Green ? TEXT("绿灯") : TEXT("无灯")));
-	UE_LOG(LogTemp, Log, TEXT("RSI: RSI2=%.2f, RSI3=%.2f -> %s"), Indicators.RSI1, Indicators.RSI2, RSIColor == EIndicatorColor::Red ? TEXT("红灯") : (RSIColor == EIndicatorColor::Green ? TEXT("绿灯") : TEXT("无灯")));
-	UE_LOG(LogTemp, Log, TEXT("WR: WR1=%.2f, WR2=%.2f -> %s"), Indicators.WR1, Indicators.WR2, WRColor == EIndicatorColor::Red ? TEXT("红灯") : (WRColor == EIndicatorColor::Green ? TEXT("绿灯") : TEXT("无灯")));
-	UE_LOG(LogTemp, Log, TEXT("DMI: PDI=%.2f, NDI=%.2f, ADX=%.2f -> %s"), Indicators.PDI, Indicators.NDI, Indicators.ADX, DMIColor == EIndicatorColor::Red ? TEXT("红灯") : (DMIColor == EIndicatorColor::Green ? TEXT("绿灯") : TEXT("无灯")));
-	UE_LOG(LogTemp, Log, TEXT("CCI: %.2f -> %s"), Indicators.CCI, CCIColor == EIndicatorColor::Red ? TEXT("红灯") : (CCIColor == EIndicatorColor::Green ? TEXT("绿灯") : TEXT("无灯")));
-	UE_LOG(LogTemp, Log, TEXT("BIAS: BIAS0=%.2f, BIAS1=%.2f, BIAS2=%.2f -> %s"), Indicators.BIAS0, Indicators.BIAS1, Indicators.BIAS2, BIASColor == EIndicatorColor::Red ? TEXT("红灯") : (BIASColor == EIndicatorColor::Green ? TEXT("绿灯") : TEXT("无灯")));
-	UE_LOG(LogTemp, Log, TEXT("统计: 红灯=%d, 绿灯=%d"), OutRedLightCount, OutGreenLightCount);
-
-	// 5. 计算权重调整
-	float WeightAdjustment = CalculateWeight(OutRedLightCount, OutGreenLightCount);
-	UE_LOG(LogTemp, Log, TEXT("权重调整: %.2f"), WeightAdjustment);
-
-	return WeightAdjustment;
-}
-
-float URecommendStocksWidget::AnalyzeIndicatorsForSell(const FString& StockCode){
-	// 1. 加载技术指标数据
-	FQTStockIndex Indicators;
-	if (!LoadLatestTechnicalIndicators(StockCode, Indicators)) {
-		UE_LOG(LogTemp, Warning, TEXT("AnalyzeIndicatorsForSell: %s 技术指标加载失败"), *GetNameCode(StockCode));
-		return 0.0f;
-	}
+float URecommendStocksWidget::AnalyzeIndicatorsForSell(const FString& StockCode, const FQTStockIndex& Indicators){
 	// 2. 判断每个指标的颜色
 	TArray<EIndicatorColor> Colors;
 	// Volume历史百分位
@@ -884,6 +664,110 @@ float URecommendStocksWidget::AnalyzeIndicatorsForSell(const FString& StockCode)
 	return WeightAdjustment;
 }
 
+float URecommendStocksWidget::AnalyzeStockForBuy(FString stockCode, const FQTStockIndex& Indicators, const FQTFinancialF10Main& inF10Data) {
+	UE_LOG(LogTemp, Warning, TEXT("AnalyzeF10AndIndicatorsForBuy:: Analyzing stock: %s"), *GetNameCode(stockCode));
+
+	// ==================== 财务指标筛选 ====================
+	// ROE < 0 或 资产负债率 > 80 或 每股经营现金流 < 0，直接排除
+	if (inF10Data.ROEJQ < 0 || inF10Data.ZCFZL > 80.0f || inF10Data.MGJYXJJE < 0) {
+		UE_LOG(LogTemp, Warning, TEXT("%s 财务指标不合格: ROE=%.2f, 负债率=%.2f%%, 现金流=%.2f, 不推荐!"), *GetNameCode(stockCode), inF10Data.ROEJQ, inF10Data.ZCFZL, inF10Data.MGJYXJJE);
+		return -100.0f;
+	}
+
+	// 计算基础权重
+	float Weight = 0.0f;
+	// 资产负债率 < 60% 优先
+	if (inF10Data.ZCFZL < 60.0f) {
+		float DebtBonus = (60.0f - inF10Data.ZCFZL) * 0.1f;
+		Weight += DebtBonus;
+		UE_LOG(LogTemp, Log, TEXT("%s 资产负债率%.2f%%, 加分%.2f"), *GetNameCode(stockCode), inF10Data.ZCFZL, DebtBonus);
+	}
+	// 每股经营现金流 > 每股收益 优先
+	if (inF10Data.MGJYXJJE > inF10Data.EPSJB) {
+		float CashBonus = FMath::Min((inF10Data.MGJYXJJE - inF10Data.EPSJB) * 4.0f, 20.0f);
+		Weight += CashBonus;
+		UE_LOG(LogTemp, Log, TEXT("%s 现金流%.2f > EPS%.2f, 加分%.2f"), *GetNameCode(stockCode), inF10Data.MGJYXJJE, inF10Data.EPSJB, CashBonus);
+	}
+	// ROE 越高越优先
+	float ROEBonus = FMath::Min(inF10Data.ROEJQ * 0.5f, 20.0f);
+	Weight += ROEBonus;
+	UE_LOG(LogTemp, Log, TEXT("%s ROE=%.2f%%, 加分%.2f"), *GetNameCode(stockCode), inF10Data.ROEJQ, ROEBonus);
+
+	// 根据历史百分位调整权重
+	if (Indicators.HistoryPEPercentile > 0.7f) {
+		UE_LOG(LogTemp, Warning, TEXT("%s 市盈率历史百分位%.2f%%, 不推荐!"), *GetNameCode(stockCode), Indicators.HistoryPEPercentile);
+		return -100.0f;
+	}
+	else if (Indicators.HistoryPEPercentile < 0.3f) {
+		float PercentileBonus = FMath::Square(1.0f - Indicators.HistoryPEPercentile) * 10.0f;
+		Weight += PercentileBonus;
+		UE_LOG(LogTemp, Log, TEXT("%s 市盈率历史百分位低, 加分%.2f"), *GetNameCode(stockCode), PercentileBonus);
+	}
+
+	//主营业务分析(高科技板块的股票推荐权重增加,销售代理类型的公司推荐权重减小)
+	FString businessDescription = GetBusinessDescription(stockCode);
+	EBusinessCategory businessCategory;
+	Weight += 4.0f * URecommendStocksWidget::AnalyzeBusinessAndGetWeightAdjustment(businessDescription, businessCategory);
+	//技术指标分析
+	// 2. 判断每个指标的颜色
+	TArray<EIndicatorColor> Colors;
+	// Volume历史百分位
+	EIndicatorColor VolumeColor = URecommendStocksWidget::CheckVolumeIndicator(Indicators.HistoryVolumeRatio);
+	Colors.Add(VolumeColor);
+	// MACD
+	EIndicatorColor MACDColor = URecommendStocksWidget::CheckMACDIndicator(Indicators.MACD);
+	Colors.Add(MACDColor);
+	// KDJ
+	EIndicatorColor KDJColor = URecommendStocksWidget::CheckKDJIndicator(Indicators.KDJ_J);
+	Colors.Add(KDJColor);
+	// RSI
+	EIndicatorColor RSIColor = URecommendStocksWidget::CheckRSIIndicator(Indicators.RSI1, Indicators.RSI2);
+	Colors.Add(RSIColor);
+	// WR
+	EIndicatorColor WRColor = URecommendStocksWidget::CheckWRIndicator(Indicators.WR1, Indicators.WR2);
+	Colors.Add(WRColor);
+	// DMI
+	EIndicatorColor DMIColor = URecommendStocksWidget::CheckDMIIndicator(Indicators.PDI, Indicators.NDI, Indicators.ADX);
+	Colors.Add(DMIColor);
+	// CCI
+	EIndicatorColor CCIColor = URecommendStocksWidget::CheckCCIIndicator(Indicators.CCI);
+	Colors.Add(CCIColor);
+	// BIAS
+	EIndicatorColor BIASColor = URecommendStocksWidget::CheckBIASIndicator(Indicators.BIAS0, Indicators.BIAS1, Indicators.BIAS2);
+	Colors.Add(BIASColor);
+	StockIndicatorColors_.Add(stockCode, Colors);
+	// 3. 统计红灯和绿灯个数
+	int OutRedLightCount = 0, OutGreenLightCount = 0;
+	for (EIndicatorColor Color : Colors) {
+		if (Color == EIndicatorColor::Red) {
+			OutRedLightCount++;
+		}
+		else if (Color == EIndicatorColor::Green) {
+			OutGreenLightCount++;
+		}
+	}
+
+	// 4. 日志输出
+	UE_LOG(LogTemp, Log, TEXT("=== %s 技术指标分析 ==="), *GetNameCode(stockCode));
+	UE_LOG(LogTemp, Log, TEXT("Volume历史百分位: %.2f -> %s"), Indicators.HistoryVolumeRatio, VolumeColor == EIndicatorColor::Red ? TEXT("红灯") : (VolumeColor == EIndicatorColor::Green ? TEXT("绿灯") : TEXT("无灯")));
+	UE_LOG(LogTemp, Log, TEXT("MACD: %.3f -> %s"), Indicators.MACD, MACDColor == EIndicatorColor::Red ? TEXT("红灯") : (MACDColor == EIndicatorColor::Green ? TEXT("绿灯") : TEXT("无灯")));
+	UE_LOG(LogTemp, Log, TEXT("KDJ_J: %.2f -> %s"), Indicators.KDJ_J, KDJColor == EIndicatorColor::Red ? TEXT("红灯") : (KDJColor == EIndicatorColor::Green ? TEXT("绿灯") : TEXT("无灯")));
+	UE_LOG(LogTemp, Log, TEXT("RSI: RSI2=%.2f, RSI3=%.2f -> %s"), Indicators.RSI1, Indicators.RSI2, RSIColor == EIndicatorColor::Red ? TEXT("红灯") : (RSIColor == EIndicatorColor::Green ? TEXT("绿灯") : TEXT("无灯")));
+	UE_LOG(LogTemp, Log, TEXT("WR: WR1=%.2f, WR2=%.2f -> %s"), Indicators.WR1, Indicators.WR2, WRColor == EIndicatorColor::Red ? TEXT("红灯") : (WRColor == EIndicatorColor::Green ? TEXT("绿灯") : TEXT("无灯")));
+	UE_LOG(LogTemp, Log, TEXT("DMI: PDI=%.2f, NDI=%.2f, ADX=%.2f -> %s"), Indicators.PDI, Indicators.NDI, Indicators.ADX, DMIColor == EIndicatorColor::Red ? TEXT("红灯") : (DMIColor == EIndicatorColor::Green ? TEXT("绿灯") : TEXT("无灯")));
+	UE_LOG(LogTemp, Log, TEXT("CCI: %.2f -> %s"), Indicators.CCI, CCIColor == EIndicatorColor::Red ? TEXT("红灯") : (CCIColor == EIndicatorColor::Green ? TEXT("绿灯") : TEXT("无灯")));
+	UE_LOG(LogTemp, Log, TEXT("BIAS: BIAS0=%.2f, BIAS1=%.2f, BIAS2=%.2f -> %s"), Indicators.BIAS0, Indicators.BIAS1, Indicators.BIAS2, BIASColor == EIndicatorColor::Red ? TEXT("红灯") : (BIASColor == EIndicatorColor::Green ? TEXT("绿灯") : TEXT("无灯")));
+	UE_LOG(LogTemp, Log, TEXT("统计: 红灯=%d, 绿灯=%d"), OutRedLightCount, OutGreenLightCount);
+
+	// 5. 计算权重调整
+	float WeightAdjustment = URecommendStocksWidget::CalculateWeight(OutRedLightCount, OutGreenLightCount);
+	UE_LOG(LogTemp, Log, TEXT("交易指标红绿灯的权重调整: %.2f"), WeightAdjustment);
+	Weight += WeightAdjustment;
+	UE_LOG(LogTemp, Log, TEXT("最终推荐权重: %.2f"), Weight);
+
+	return Weight;
+}
+
 bool URecommendStocksWidget::LoadLatestTechnicalIndicators(const FString& StockCode, FQTStockIndex& klineIndicators){
 	// 构建K线文件路径
 	FString KLineFilePath = FPaths::ProjectDir() + FString::Printf(TEXT("Saved/StockDatas/KlineDatas/%s/Kline101.json"), *GetNameCode(StockCode));
@@ -924,6 +808,7 @@ bool URecommendStocksWidget::LoadLatestTechnicalIndicators(const FString& StockC
 	}
 	// 读取各项技术指标
 	LatestKLineObj->TryGetNumberField(TEXT("HistoryVolumeRatio"), klineIndicators.HistoryVolumeRatio);
+	LatestKLineObj->TryGetNumberField(TEXT("HistoryPEPercentile"), klineIndicators.HistoryPEPercentile);
 	LatestKLineObj->TryGetNumberField(TEXT("MACD"), klineIndicators.MACD);
 	LatestKLineObj->TryGetNumberField(TEXT("KDJ_K"), klineIndicators.KDJ_K);
 	LatestKLineObj->TryGetNumberField(TEXT("KDJ_D"), klineIndicators.KDJ_D);
@@ -940,6 +825,61 @@ bool URecommendStocksWidget::LoadLatestTechnicalIndicators(const FString& StockC
 	LatestKLineObj->TryGetNumberField(TEXT("BIAS0"), klineIndicators.BIAS0);
 	LatestKLineObj->TryGetNumberField(TEXT("BIAS1"), klineIndicators.BIAS1);
 	LatestKLineObj->TryGetNumberField(TEXT("BIAS2"), klineIndicators.BIAS2);
+	return true;
+}
+
+bool URecommendStocksWidget::LoadLatestF10Datas(const FString& stockCode, FQTFinancialF10Main& f10Datas){
+	// 构建K线文件路径
+	FString f10FilePath = FPaths::ProjectDir() + FString::Printf(TEXT("Saved/StockDatas/KlineDatas/%s/F10.json"), *GetNameCode(stockCode));
+	if (!FPaths::FileExists(f10FilePath)) {
+		UE_LOG(LogTemp, Warning, TEXT("URecommendStocksWidget::LoadLatestF10Datas::F10文件不存在: %s"), *f10FilePath);
+		return false;
+	}
+	// 加载文件
+	FString FileContent;
+	if (!FFileHelper::LoadFileToString(FileContent, *f10FilePath)) {
+		UE_LOG(LogTemp, Warning, TEXT("URecommendStocksWidget::LoadLatestF10Datas::F10文件加载失败: %s"), *f10FilePath);
+		return false;
+	}
+	// 解析JSON
+	TSharedPtr<FJsonObject> JsonObject;
+	TSharedRef<TJsonReader<>> Reader = TJsonReaderFactory<>::Create(FileContent);
+	if (!FJsonSerializer::Deserialize(Reader, JsonObject) || !JsonObject.IsValid()) {
+		UE_LOG(LogTemp, Warning, TEXT("URecommendStocksWidget::LoadLatestF10Datas::F10 JSON解析失败: %s"), *GetNameCode(stockCode));
+		return false;
+	}
+	// 获取F10数组
+	const TArray<TSharedPtr<FJsonValue>>* f10DatasArray = nullptr;
+	if (!JsonObject->TryGetArrayField(TEXT("F10"), f10DatasArray) || !f10DatasArray || f10DatasArray->Num() == 0) {
+		UE_LOG(LogTemp, Warning, TEXT("URecommendStocksWidget::LoadLatestF10Datas::F10数据为空: %s"), *GetNameCode(stockCode));
+		return false;
+	}
+	// 获取最新一条F10线数据（第一条）
+	const TSharedPtr<FJsonValue>& LatestF10 = (*f10DatasArray)[0];
+	if (!LatestF10.IsValid()) {
+		UE_LOG(LogTemp, Warning, TEXT("URecommendStocksWidget::LoadLatestF10Datas::最新F10数据无效: %s"), *GetNameCode(stockCode));
+		return false;
+	}
+	const TSharedPtr<FJsonObject>& LatestF10Obj = LatestF10->AsObject();
+	if (!LatestF10Obj || !LatestF10Obj.IsValid()) {
+		UE_LOG(LogTemp, Warning, TEXT("URecommendStocksWidget::LoadLatestF10Datas::最新F10不是JSON对象: %s"), *GetNameCode(stockCode));
+		return false;
+	}
+	// 读取各项数据
+	LatestF10Obj->TryGetStringField(TEXT("SECURITY_CODE"), f10Datas.SECURITY_CODE);
+	LatestF10Obj->TryGetStringField(TEXT("SECURITY_NAME_ABBR"), f10Datas.SECURITY_NAME_ABBR);
+	LatestF10Obj->TryGetNumberField(TEXT("REPORTDATE"), f10Datas.REPORTDATE);
+	LatestF10Obj->TryGetNumberField(TEXT("EPSJB"), f10Datas.EPSJB);
+	LatestF10Obj->TryGetNumberField(TEXT("EPSXS"), f10Datas.EPSXS);
+	LatestF10Obj->TryGetNumberField(TEXT("BPS"), f10Datas.BPS);
+	LatestF10Obj->TryGetNumberField(TEXT("MGJYXJJE"), f10Datas.MGJYXJJE);
+	LatestF10Obj->TryGetNumberField(TEXT("MLR"), f10Datas.MLR);
+	LatestF10Obj->TryGetNumberField(TEXT("PARENTNETPROFIT"), f10Datas.PARENTNETPROFIT);
+	LatestF10Obj->TryGetNumberField(TEXT("ROEJQ"), f10Datas.ROEJQ);
+	LatestF10Obj->TryGetNumberField(TEXT("ZZCJLL"), f10Datas.ZZCJLL);
+	LatestF10Obj->TryGetNumberField(TEXT("XSMLL"), f10Datas.XSMLL);
+	LatestF10Obj->TryGetNumberField(TEXT("XSJLL"), f10Datas.XSJLL);
+	LatestF10Obj->TryGetNumberField(TEXT("ZCFZL"), f10Datas.ZCFZL);
 	return true;
 }
 
@@ -1000,9 +940,9 @@ EIndicatorColor URecommendStocksWidget::CheckBIASIndicator(float BIAS0, float BI
 }
 
 float URecommendStocksWidget::CalculateWeight(int32 RedLightCount, int32 GreenLightCount){
-	// 红灯个数 > 4 的直接筛掉
-	if (RedLightCount > 4) {
-		UE_LOG(LogTemp, Log, TEXT("红灯个数 %d > 4，直接排除"), RedLightCount);
+	// 红灯个数 > 绿灯个数的直接筛掉
+	if (RedLightCount > GreenLightCount) {
+		UE_LOG(LogTemp, Log, TEXT("红灯个数%d > 绿灯个数%d，直接排除"), RedLightCount, GreenLightCount);
 		return -100.0f;  // 大幅降低权重，相当于排除
 	}
 
@@ -1032,15 +972,15 @@ float URecommendStocksWidget::CalculateWeight(int32 RedLightCount, int32 GreenLi
 }
 
 float URecommendStocksWidget::CalculateWeightForSell(int32 RedLightCount, int32 GreenLightCount){
-	// 红灯个数 < 2 的直接筛掉
-	if (RedLightCount > GreenLightCount && RedLightCount < 2) {
-		UE_LOG(LogTemp, Log, TEXT("CalculateWeightForSell::红灯个数%d < 2 且没有绿灯个数%d多，直接排除"), RedLightCount, GreenLightCount);
+	// 红灯个数 < 2 的或红灯个数少于绿灯个数的直接筛掉
+	if (RedLightCount < GreenLightCount || RedLightCount < 2) {
+		UE_LOG(LogTemp, Log, TEXT("CalculateWeightForSell::红灯个数%d < 2偏少或绿灯个数%d偏多，直接排除"), RedLightCount, GreenLightCount);
 		return -100.0f;  // 大幅降低权重，相当于排除
 	}
 	// 红灯个数越多，推荐权重越大
 	// 基础权重：每个红灯 +2 分
 	float BaseWeight = RedLightCount * 2.0f;
-	// 红灯惩罚：每个红灯 -1 分
+	// 绿灯惩罚：每个绿灯 -1 分
 	float Penalty = GreenLightCount * 1.0f;
 	// 净权重
 	float Weight = BaseWeight - Penalty;

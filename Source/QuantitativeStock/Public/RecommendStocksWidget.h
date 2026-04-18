@@ -103,8 +103,8 @@ private:
 	void UpdateStockKLineF10(const TArray<FString> stockCodes, int buyOrSell = 0);
 	//分析出手股票只需要K线数据
 	void UpdateStockKLine(const TArray<FString> stockCodes, int buyOrSell = 1);
-	//分析财务数据,公司经营业务以及技术指标
-	void AnalyzeStockDatas(const TArray<FString> stockCodes);
+	//分析财务数据,公司经营业务以及技术指标,判断其是否适合买入
+	void AnalyzeStockDatasForBuy(const TArray<FString> stockCodes);
 	//分析K线指标数据,挑出适合出手的股票,更新RecommendSellStocks_数组,并调用DisplayRecommendedStocks事件把推荐的股票列表显示在UI上
 	void AnalyzeSellStockDatas(const TArray<FString> stockCodes);
 	//  辅助函数：根据日期获取对应时期的EPS
@@ -132,11 +132,15 @@ public:
 	BIAS0>3&&BIAS1>5&&BIAS2>10闪红灯,BIAS0<-3&&BIAS1<-5&&BIAS2<-10闪绿灯,否则不闪灯
 	----------------------------------------------------------------------------------------------------------
 	8个灯,红灯个数>4的直接筛掉,绿灯个数越多的,推荐权重越大
-	*/
-	float AnalyzeIndicatorsAndGetWeightAdjustment(const FString& stockCode);
-	float AnalyzeIndicatorsForSell(const FString& stockCode);
+	
+	分析单只股票的推荐出手*/
+	float AnalyzeIndicatorsForSell(const FString& stockCode, const FQTStockIndex& Indicators);
+	//分析单只股票的推荐入手(传入当天的K线数据和当天的F10财务数据)
+	float AnalyzeStockForBuy(FString instock, const FQTStockIndex& indicatorData, const FQTFinancialF10Main& inF10Data);
 	//辅助函数:加载最新日期KLine数据
 	bool LoadLatestTechnicalIndicators(const FString& stockCode, FQTStockIndex& klineIndicators);
+	//辅助函数:加载最新日期的F10财务数据
+	bool LoadLatestF10Datas(const FString& stockCode, FQTFinancialF10Main& f10Datas);
 	// 判断各个指标并返回灯的颜色
 	static EIndicatorColor CheckVolumeIndicator(float HistoryVolumeRatio);
 	static EIndicatorColor CheckMACDIndicator(float MACD);

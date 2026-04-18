@@ -32,9 +32,12 @@ public:
 	//根据推荐入手的股票和可用资金余额买入
 	UFUNCTION(BlueprintImplementableEvent, Category = "QT | Event")
 	void BuyRecommendedStocks(const TArray<FString>& stocks);
-
+	//主要用来访问其中的股票检索列表
 	UPROPERTY(EditInstanceOnly, BlueprintReadWrite, Category = "QT | Assets")
 	class UCompanyNameIndexWidget* companyNameIndexWidgetBP;
+	//推荐股票列表(调用其中的推荐函数)
+	UPROPERTY(EditInstanceOnly, BlueprintReadWrite, Category = "QT | Assets")
+	class URecommendStocksWidget* recommendStocksWidgetBP;
 
 	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "QT | Stock")
 	FString GetNameCode(FString stockCode);
@@ -64,12 +67,7 @@ private:
 	//存放推荐入手股票列表的数组(每只股票对应一个权重,权重值越大越是优先推荐的股票,默认权重值是0,权重值小于0的相当于直接筛掉了)
 	TMap<FString, float> RecommendBuyStocks_;
 
-	float AnalyzeIndicatorsForSell(FString instock, const FQTStockIndex& indicatorDatas);
-	float AnalyzeF10AndIndicatorsForBuy(FString instock, const FQTStockIndex& indicatorData,const FQTFinancialF10Main& inF10Data);
-
 	//存放8大指标灯颜色的数组,每只股票对应一个8个灯的数组,可以用来显示每只股票的技术指标情况
 	TMap<FString, TArray<EIndicatorColor>> StockIndicatorColors_;
 
-	//读取公司简介文件,提取公司的主营业务和营业范围
-	FString GetBusinessDescription(FString stockCode);
 };
