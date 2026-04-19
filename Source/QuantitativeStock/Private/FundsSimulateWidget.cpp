@@ -8,11 +8,14 @@ void UFundsSimulateWidget::SimulateFunds(int inDate, float inBalance){
 	//先卖出再买入
 	TArray<FString> sellStocks, buyStocks;
 	for (auto& stockPair : RecommendSellStocks_) {
-		if (stockPair.Value > 0)sellStocks.Add(stockPair.Key);
+		if (stockPair.Value > 5) {//推荐权重大于5的加入出手推荐列表
+			UE_LOG(LogTemp, Warning, TEXT("--------->>%s推荐值为%f,加入出手推荐列表"), *GetNameCode(stockPair.Key), stockPair.Value);
+			sellStocks.Add(stockPair.Key);
+		}
 	}
 	if (inBalance > 0.2f) {
 		for (auto& stockPair : RecommendBuyStocks_) {
-			if (stockPair.Value > 10) {//推荐权重大于10的加入推荐列表
+			if (stockPair.Value > 20) {//推荐权重大于20的加入推荐列表
 				UE_LOG(LogTemp, Warning, TEXT("--------->>%s推荐值为%f,加入入手推荐列表"), *GetNameCode(stockPair.Key), stockPair.Value);
 				buyStocks.Add(stockPair.Key);
 			}
@@ -20,7 +23,7 @@ void UFundsSimulateWidget::SimulateFunds(int inDate, float inBalance){
 	}
 	if (sellStocks.IsEmpty()) { UE_LOG(LogTemp, Warning, TEXT("--------->>%d出手推荐为空,今天没有适合卖出的股票"), inDate); }
 	else {
-		int firstOneThird = FMath::CeilToInt32(sellStocks.Num() * 0.3f);//将推荐出手的股票排前30%的卖掉
+		int firstOneThird = FMath::CeilToInt32(sellStocks.Num() * 0.7f);//将推荐出手的股票排前70%的卖掉
 		TArray<FString> finalSellStocks;
 		for (int i = 0; i < firstOneThird; ++i) {
 			finalSellStocks.Add(sellStocks[i]);
