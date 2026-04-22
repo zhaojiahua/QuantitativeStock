@@ -206,4 +206,7 @@ public:
 	void OnCompanyCommitted(const TArray<TSharedPtr<FQTStockIndex>>& inAllRows, bool isLocalData = false);
 	//计算并存储各种技术指标
 	void CaculateAndStoreIndicators(TArray<TSharedPtr<FQTStockIndex>>& allRows);
+	//获取K线浮动窗口,用于模拟交易时显示交易标识
+	UFUNCTION(BlueprintCallable, Category = "QT | MoNi")
+	TArray<UUserWidget*> GetFloatWindWidgets();
 };

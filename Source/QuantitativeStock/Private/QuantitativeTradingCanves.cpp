@@ -1040,6 +1040,10 @@ void UQuantitativeTradingCanves::CaculateAndStoreIndicators(TArray<TSharedPtr<FQ
 	}
 }
 
+TArray<UUserWidget*> UQuantitativeTradingCanves::GetFloatWindWidgets(){
+	return KLineFlotWindWidgets;
+}
+
 bool UQuantitativeTradingCanves::SaveCycleSettingsToJson(const FString& inSpecifyName, const int cycleInfos[3]){
 	FString paramFilePath = FPaths::ProjectDir() + FString::Printf(TEXT("Saved/StockDatas/IndicatorParams/%s.json"), *indicatorName.ToString());
 	TSharedPtr<FJsonObject> jsonObject = MakeShareable(new FJsonObject());
