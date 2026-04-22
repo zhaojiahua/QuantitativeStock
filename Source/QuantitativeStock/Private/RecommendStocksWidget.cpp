@@ -64,7 +64,8 @@ bool URecommendStocksWidget::LoadStocksForSellFromJson(FString jsonFileName){
 }
 
 void URecommendStocksWidget::StartFilterStocks(){
-	progress = 0.0f;
+	buyprogress = 0.0f;
+	sellprogress = 0.0f;
 	bool success = false;
 	success = LoadStocksFromRecentStockListJson({ TEXT("*ST"),TEXT("ST") });//首先筛选掉所有*ST和ST开头的股票,因为这些股票通常是有退市风险的,不适合推荐给用户
 	if (success) {//然后对RecommendStocks_里面的股票逐一进行财务基本面分析,ROE<0的一律筛掉,ROE越大越优先推荐,其次再检查资产负债率,大于80%的筛掉,小于60%的优先.最后再检查现金流,小于0的筛掉,每股现金流>每股净收益的优先考虑;
@@ -223,7 +224,7 @@ bool URecommendStocksWidget::ParseF10sFinanceMainResponse(const FString& respons
 }
 
 void URecommendStocksWidget::GetKLineDatasByStockCode(FString stockCode) {
-	progress = (GetKLineCounts + GetF10Counts) / (2.0f * RecommendStocks_.Num());
+	//progress = (GetKLineCounts + GetF10Counts) / (2.0f * RecommendStocks_.Num());
 	UE_LOG(LogTemp, Warning, TEXT("---------->>  GetKLineDatasByStockCode::正在从网站获取%s的K线数据 JustSave"), *GetNameCode(stockCode));
 	companyNameIndexWidgetBP->FetchKLineDataJustSave(stockCode);
 }
@@ -259,9 +260,9 @@ void URecommendStocksWidget::GetF10DatasByStockCode(FString stockCode){
 		return;
 	}
 	// 防止除零错误
-	int32 StockCount = FMath::Max(RecommendStocks_.Num(), 1);
-	progress = (GetKLineCounts + GetF10Counts) / (2.0f * StockCount);
-	UE_LOG(LogTemp, Warning, TEXT("---------->>  GetF10DatasByStockCode::正在从网站获取%s的F10数据 JustSave --Progress %f"), *GetNameCode(stockCode), progress);
+	//int32 StockCount = FMath::Max(RecommendStocks_.Num(), 1);
+	//progress = (GetKLineCounts + GetF10Counts) / (2.0f * StockCount);
+	//UE_LOG(LogTemp, Warning, TEXT("---------->>  GetF10DatasByStockCode::正在从网站获取%s的F10数据 JustSave --Progress %f"), *GetNameCode(stockCode), progress);
 	stockMonitor_->GetStockF10FianceMainDatas(stockCode);
 }
 
@@ -298,6 +299,7 @@ void URecommendStocksWidget::PlusGetKLineCounts(int buyOrSell){
 	GetKLineCounts++;
 	if (buyOrSell == 0) {
 		UE_LOG(LogTemp, Warning, TEXT("------------>> 股票K线更新个数:%d"), GetKLineCounts);
+		buyprogress = static_cast<float>(GetKLineCounts) / static_cast<float>(RecommendStocks_.Num());
 		if (GetKLineCounts == RecommendStocks_.Num()) {//当股票K线刷新完开始执行市盈率分析
 			UE_LOG(LogTemp, Warning, TEXT("----------------->> 股票K线更新完毕!!!"));
 			if (GetF10Counts == RecommendStocks_.Num()) {
@@ -311,6 +313,7 @@ void URecommendStocksWidget::PlusGetKLineCounts(int buyOrSell){
 	}
 	else if (buyOrSell == 1) {
 		UE_LOG(LogTemp, Warning, TEXT("------------>> 卖出股票K线更新个数:%d"), GetKLineCounts);
+		sellprogress= static_cast<float>(GetKLineCounts) / static_cast<float>(RecommendSellStocks_.Num());
 		if (GetKLineCounts == RecommendSellStocks_.Num()) {
 			UE_LOG(LogTemp, Warning, TEXT("----------------->> 卖出股票K线更新完毕!!!"));
 			//开始分析财务指标数据
@@ -391,7 +394,8 @@ void URecommendStocksWidget::UpdateStockKLine(const TArray<FString> stockCodes, 
 }
 
 void URecommendStocksWidget::AnalyzeStockDatasForBuy(const TArray<FString> stockCodes){
-	progress = 0.0f;
+	buyprogress = 0.0f;
+	sellprogress = 0.0f;
 	int tempI = 0;
 	for (const auto& stockCode : stockCodes)	{
 		tempI++;

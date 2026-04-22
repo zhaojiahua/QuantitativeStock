@@ -52,7 +52,9 @@ public:
 	class UCompanyNameIndexWidget* companyNameIndexWidgetBP;
 	//股票推荐算法的进度,0-1,可以绑定到UI上显示进度条
 	UPROPERTY(BlueprintReadWrite, Category = "QT | Params")
-	float progress = 0.0f;
+	float buyprogress = 0.0f;
+	UPROPERTY(BlueprintReadWrite, Category = "QT | Params")
+	float sellprogress = 0.0f;
 	//添加前10只推荐股票到UI上显示,可以绑定到UI上显示推荐股票列表
 	UFUNCTION(BlueprintImplementableEvent, Category = "QT | Events")
 	void DisplayRecommendedStocks(const TArray<FQTStockRealTimeData>& stockRealDatas);
