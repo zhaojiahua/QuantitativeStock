@@ -142,10 +142,16 @@ struct FQTStockIndex : public FTableRowBase
 	float EMA240 = 0.0f;
 	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite)
 	float DIF = 0.0f;
+	//快线的微分,当DIF在DEA之下的时候,DIFDelta>0说明要反弹,提示买入,闪绿灯;当DIF在DEA之上的时候,DIFDelta<0说明要回调,提示卖出,闪红灯
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite)
+	double DIFDelta = 0.0f;
 	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite)
 	float DEA = 0.0f;
 	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite)
 	float MACD = 0.0f;
+	//正数表示MACD连涨的天数,负数表示MACD连跌的天数(当连涨天数达到一定数值推时荐卖出,当连跌天数达到一定数值时推荐买入)
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite)
+	int MACDCombo = 0;
 	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite)
 	float BollUpper = 0.0f;
 	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite)

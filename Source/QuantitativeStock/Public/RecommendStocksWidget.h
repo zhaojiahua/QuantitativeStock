@@ -125,7 +125,8 @@ public:
 
 	/*
 	Volume历史百分位>0.7闪红灯,<0.3闪绿灯,否则不闪灯;
-	MACD>0.2闪红灯,<-0.2闪绿灯,否则不闪灯;
+	当MACD在水上时,MACD连涨4天就开始超买爆红提示,当MACD在水下时,MACD要连涨6天才开始爆红提示;
+	当MACD在水上时,MACD连跌7天就开始超卖爆绿提示,当MACD在水下时,MACD连跌5天开始爆绿提示;
 	KDJ_J>90闪红灯,<10闪绿灯;
 	RSI2>RSI3&&RSI2>50闪红灯,RSI2<RSI3&&RSI2<50闪绿灯,否则不闪灯;
 	WR1和WR2同时大于90闪红灯,同时小于10闪绿灯,否则不闪灯;
@@ -145,7 +146,11 @@ public:
 	bool LoadLatestF10Datas(const FString& stockCode, FQTFinancialF10Main& f10Datas);
 	// 判断各个指标并返回灯的颜色
 	static EIndicatorColor CheckVolumeIndicator(float HistoryVolumeRatio);
-	static EIndicatorColor CheckMACDIndicator(float MACD);
+	//当MACD在水上时,MACD连涨4天就开始超买爆红提示,当MACD在水下时,MACD要连涨6天才开始爆红提示;
+	//当MACD在水上时,MACD连跌7天就开始超卖爆绿提示,当MACD在水下时,MACD连跌5天开始爆绿提示;
+	//当DIF在DEA下面时,DIFDelta>0,推荐买入,闪绿灯;当DIF在DEA上面是,DIFDelta<0,推荐卖出,闪红灯
+	UFUNCTION(BlueprintCallable, Category = "CheckRedGreen")
+	static EIndicatorColor CheckMACDIndicator(float DIF, float DEA, float DIFDelta, float MACD, float macdCombo);
 	static EIndicatorColor CheckKDJIndicator(float KDJ_J);
 	static EIndicatorColor CheckRSIIndicator(float RSI2, float RSI3);
 	static EIndicatorColor CheckWRIndicator(float WR1, float WR2);

@@ -75,7 +75,7 @@ void UCompanyNameIndexWidget::GetIntroductionByCodeOrName(FString codeOrName){
 void UCompanyNameIndexWidget::GetKLineDatasBP(const FString& codeOrName, int inklt, int  infqt){
 	TSharedPtr<FQTStockListRow>* sourcecodeptr = StockRowListMap_.Find(codeOrName);
 	if (sourcecodeptr) {
-		if (GetKLineDatasByStockCode((*sourcecodeptr)->CODE, inklt, infqt) && outKLineDatas_.Num() > 0 && mainCanvas)	mainCanvas->OnCompanyCommitted(outKLineDatas_, true);
+		if (GetKLineDatasByStockCode((*sourcecodeptr)->CODE, inklt, infqt) && outKLineDatas_.Num() > 0 && mainCanvas)	mainCanvas->OnCompanyCommitted(outKLineDatas_);
 	}
 	else UE_LOG(LogTemp,Warning,TEXT("----------------------------------------------------->> 股票不存在!"));
 }
@@ -275,8 +275,10 @@ bool UCompanyNameIndexWidget::GetKLineDatasByStockCode(const FString& stockCode,
 							klineData->DIF1 = klineObject->TryGetField(TEXT("DIF1"))->AsNumber();
 							klineData->DIF2 = klineObject->TryGetField(TEXT("DIF2"))->AsNumber();
 							klineData->DIF = klineObject->TryGetField(TEXT("DIF"))->AsNumber();
+							klineData->DIFDelta = klineObject->TryGetField(TEXT("DIFDelta"))->AsNumber();
 							klineData->DEA = klineObject->TryGetField(TEXT("DEA"))->AsNumber();
 							klineData->MACD = klineObject->TryGetField(TEXT("MACD"))->AsNumber();
+							klineData->MACDCombo = klineObject->TryGetField(TEXT("MACDCombo"))->AsNumber();
 							klineData->BollUpper = klineObject->TryGetField(TEXT("BollUpper"))->AsNumber();
 							klineData->BollLower = klineObject->TryGetField(TEXT("BollLower"))->AsNumber();
 							klineData->KDJ_RSV = klineObject->TryGetField(TEXT("KDJ_RSV"))->AsNumber();
@@ -345,22 +347,8 @@ bool UCompanyNameIndexWidget::CheckStockCodeOrNameExist(const FString& stockCode
 	return false;
 }
 
-void UCompanyNameIndexWidget::UpdateLatestDayLine(const FQTStockRealTimeData& latestDayLineData){
-	TSharedPtr < FQTStockIndex >& lastestDayKLineData = outKLineDatas_.Last();
-	if (lastestDayKLineData->Date != FDateTime::Now().GetYear() * 10000 + FDateTime::Now().GetMonth() * 100 + FDateTime::Now().GetDay()) {
-		UE_LOG(LogTemp, Warning, TEXT("---------->> 最新日线数据的日期与当前日期不符,无法更新!"));
-		return;
-	}
-	lastestDayKLineData->Open = latestDayLineData.OpenPrice;
-	lastestDayKLineData->Close = latestDayLineData.LatestPrice;
-	lastestDayKLineData->High = latestDayLineData.HighestPrice;
-	lastestDayKLineData->Low = latestDayLineData.LowestPrice;
-	lastestDayKLineData->Volume = 10000.0f * latestDayLineData.Volume;//FQTStockRealTimeData实时数据中的Volume单位是万手,而FQTStockIndex日线数据中的Volume单位是股,所以需要乘以10000进行转换
-	lastestDayKLineData->Turnover = latestDayLineData.Turnover;
-	lastestDayKLineData->Change = latestDayLineData.ChangeAmount;
-	lastestDayKLineData->ChangeRatio = latestDayLineData.ChangeRatio;
-	lastestDayKLineData->PriceRange = latestDayLineData.PriceRange;
-	lastestDayKLineData->TurnoverRate = latestDayLineData.TurnoverRate;
+void UCompanyNameIndexWidget::UpdateLatestDayLine(TArray<TSharedPtr<FQTStockIndex>>& nestDayLineData){
+	outKLineDatas_ = nestDayLineData;
 	//存储更新后的日线数据到本地文件
 	FString outputString;
 	TSharedPtr<FJsonObject> rootObj = MakeShareable(new FJsonObject());
@@ -379,6 +367,76 @@ void UCompanyNameIndexWidget::UpdateLatestDayLine(const FQTStockRealTimeData& la
 		klineObj->SetNumberField(TEXT("Turnover"), item->Turnover);
 		klineObj->SetNumberField(TEXT("PriceRange"), item->PriceRange);
 		klineObj->SetNumberField(TEXT("TurnoverRate"), item->TurnoverRate);
+		klineObj->SetNumberField(TEXT("ConsNumber"), item->ConsNumber);
+		klineObj->SetNumberField(TEXT("SMA5"), item->SMA5);
+		klineObj->SetNumberField(TEXT("SMA5SUM"), item->SMA5SUM);
+		klineObj->SetNumberField(TEXT("SMA10"), item->SMA10);
+		klineObj->SetNumberField(TEXT("SMA10SUM"), item->SMA10SUM);
+		klineObj->SetNumberField(TEXT("SMA20"), item->SMA20);
+		klineObj->SetNumberField(TEXT("SMA20SUM"), item->SMA20SUM);
+		klineObj->SetNumberField(TEXT("SMA60"), item->SMA60);
+		klineObj->SetNumberField(TEXT("SMA60SUM"), item->SMA60SUM);
+		klineObj->SetNumberField(TEXT("SMA240"), item->SMA240);
+		klineObj->SetNumberField(TEXT("SMA240SUM"), item->SMA240SUM);
+		klineObj->SetNumberField(TEXT("EMA5"), item->EMA5);
+		klineObj->SetNumberField(TEXT("EMA10"), item->EMA10);
+		klineObj->SetNumberField(TEXT("EMA20"), item->EMA20);
+		klineObj->SetNumberField(TEXT("EMA60"), item->EMA60);
+		klineObj->SetNumberField(TEXT("EMA240"), item->EMA240);
+		klineObj->SetNumberField(TEXT("BollUpper"), item->BollUpper);
+		klineObj->SetNumberField(TEXT("BollLower"), item->BollLower);
+		klineObj->SetNumberField(TEXT("DIF1"), item->DIF1);
+		klineObj->SetNumberField(TEXT("DIF2"), item->DIF2);
+		klineObj->SetNumberField(TEXT("DIF"), item->DIF);
+		klineObj->SetNumberField(TEXT("DIFDelta"), item->DIFDelta);
+		klineObj->SetNumberField(TEXT("DEA"), item->DEA);
+		klineObj->SetNumberField(TEXT("MACD"), item->MACD);
+		klineObj->SetNumberField(TEXT("MACDCombo"), item->MACDCombo);
+		klineObj->SetNumberField(TEXT("KDJ_RSV"), item->KDJ_RSV);
+		klineObj->SetNumberField(TEXT("KDJ_K"), item->KDJ_K);
+		klineObj->SetNumberField(TEXT("KDJ_D"), item->KDJ_D);
+		klineObj->SetNumberField(TEXT("KDJ_J"), item->KDJ_J);
+		klineObj->SetNumberField(TEXT("RSI0"), item->RSI0);
+		klineObj->SetNumberField(TEXT("RSI0_AVGUp"), item->RSI0_AVGUp);
+		klineObj->SetNumberField(TEXT("RSI0_AVGDown"), item->RSI0_AVGDown);
+		klineObj->SetNumberField(TEXT("RSI1"), item->RSI1);
+		klineObj->SetNumberField(TEXT("RSI1_AVGUp"), item->RSI1_AVGUp);
+		klineObj->SetNumberField(TEXT("RSI1_AVGDown"), item->RSI1_AVGDown);
+		klineObj->SetNumberField(TEXT("RSI2"), item->RSI2);
+		klineObj->SetNumberField(TEXT("RSI2_AVGUp"), item->RSI2_AVGUp);
+		klineObj->SetNumberField(TEXT("RSI2_AVGDown"), item->RSI2_AVGDown);
+		klineObj->SetNumberField(TEXT("WR1"), item->WR1);
+		klineObj->SetNumberField(TEXT("WR2"), item->WR2);
+		klineObj->SetNumberField(TEXT("TR_Average"), item->TR_Average);
+		klineObj->SetNumberField(TEXT("PDI_Average"), item->PDI_Average);
+		klineObj->SetNumberField(TEXT("NDI_Average"), item->NDI_Average);
+		klineObj->SetNumberField(TEXT("PDI"), item->PDI);
+		klineObj->SetNumberField(TEXT("NDI"), item->NDI);
+		klineObj->SetNumberField(TEXT("DX"), item->DX);
+		klineObj->SetNumberField(TEXT("ADX"), item->ADX);
+		klineObj->SetNumberField(TEXT("ADXR"), item->ADXR);
+		klineObj->SetNumberField(TEXT("CCI_TP"), item->CCI_TP);
+		klineObj->SetNumberField(TEXT("CCI_TPSUM"), item->CCI_TPSUM);
+		klineObj->SetNumberField(TEXT("CCI_SMA"), item->CCI_SMA);
+		klineObj->SetNumberField(TEXT("CCI_MAD"), item->CCI_MAD);
+		klineObj->SetNumberField(TEXT("CCI"), item->CCI);
+		klineObj->SetNumberField(TEXT("BIAS0_SMASUM"), item->BIAS0_SMASUM);
+		klineObj->SetNumberField(TEXT("BIAS1_SMASUM"), item->BIAS1_SMASUM);
+		klineObj->SetNumberField(TEXT("BIAS2_SMASUM"), item->BIAS2_SMASUM);
+		klineObj->SetNumberField(TEXT("BIAS0"), item->BIAS0);
+		klineObj->SetNumberField(TEXT("BIAS0_SMASUM"), item->BIAS0_SMASUM);
+		klineObj->SetNumberField(TEXT("BIAS1"), item->BIAS1);
+		klineObj->SetNumberField(TEXT("BIAS1_SMASUM"), item->BIAS1_SMASUM);
+		klineObj->SetNumberField(TEXT("BIAS2"), item->BIAS2);
+		klineObj->SetNumberField(TEXT("BIAS2_SMASUM"), item->BIAS2_SMASUM);
+		klineObj->SetNumberField(TEXT("HistoryVolumeRatio"), item->HistoryVolumeRatio);
+		klineObj->SetNumberField(TEXT("VolumeRatio"), item->VolumeRatio);
+		klineObj->SetNumberField(TEXT("VolumeSUM"), item->VolumeSUM);
+		klineObj->SetNumberField(TEXT("HistoryPEPercentile"), item->HistoryPEPercentile);
+		klineObj->SetNumberField(TEXT("FPE"), item->FPE);
+		klineObj->SetNumberField(TEXT("HistoryMaxPE"), item->HistoryMaxPE);
+		klineObj->SetNumberField(TEXT("HistoryMinPE"), item->HistoryMinPE);
+		klineObj->SetNumberField(TEXT("EPSJB"), item->EPSJB);
 		klineJsonArray.Add(MakeShareable(new FJsonValueObject(klineObj)));
 	}
 	rootObj->SetArrayField(TEXT("Klines"), klineJsonArray);
@@ -577,7 +635,11 @@ void UCompanyNameIndexWidget::OnKLineDataRequestComplete(FHttpRequestPtr Request
 		outKLineDatas_.Empty();//清空之前的数据
 		if (ParseKLineDataResponse(responseString, outKLineDatas_)) {
 			//通知主画布数据已更新
-			if (outKLineDatas_.Num() > 0 && mainCanvas)	mainCanvas->OnCompanyCommitted(outKLineDatas_);
+			if (outKLineDatas_.Num() > 0 && mainCanvas) {
+				UE_LOG(LogTemp, Warning, TEXT("----------------->> 网上荡的新数据,重新计算技术指标"));
+				mainCanvas->CaculateAndStoreIndicators(outKLineDatas_);
+				mainCanvas->OnCompanyCommitted(outKLineDatas_);
+			}
 			//将数据保存到本地文件
 			UE_LOG(LogTemp, Warning, TEXT("---------->> 股票日线数据获取成功,技术指标计算完毕,正在保存到本地文件..."));
 			TSharedPtr<FJsonObject> jsonObject = MakeShareable(new FJsonObject());
@@ -616,8 +678,10 @@ void UCompanyNameIndexWidget::OnKLineDataRequestComplete(FHttpRequestPtr Request
 				klineObject->SetNumberField(TEXT("DIF1"), eachKLineData->DIF1);
 				klineObject->SetNumberField(TEXT("DIF2"), eachKLineData->DIF2);
 				klineObject->SetNumberField(TEXT("DIF"), eachKLineData->DIF);
+				klineObject->SetNumberField(TEXT("DIFDelta"), eachKLineData->DIFDelta);
 				klineObject->SetNumberField(TEXT("DEA"), eachKLineData->DEA);
 				klineObject->SetNumberField(TEXT("MACD"), eachKLineData->MACD);
+				klineObject->SetNumberField(TEXT("MACDCombo"), eachKLineData->MACDCombo);
 				klineObject->SetNumberField(TEXT("KDJ_RSV"), eachKLineData->KDJ_RSV);
 				klineObject->SetNumberField(TEXT("KDJ_K"), eachKLineData->KDJ_K);
 				klineObject->SetNumberField(TEXT("KDJ_D"), eachKLineData->KDJ_D);
@@ -728,8 +792,10 @@ void UCompanyNameIndexWidget::OnKLineDataRequestCompleteJustSave(FHttpRequestPtr
 				klineObject->SetNumberField(TEXT("DIF1"), eachKLineData->DIF1);
 				klineObject->SetNumberField(TEXT("DIF2"), eachKLineData->DIF2);
 				klineObject->SetNumberField(TEXT("DIF"), eachKLineData->DIF);
+				klineObject->SetNumberField(TEXT("DIFDelta"), eachKLineData->DIFDelta);
 				klineObject->SetNumberField(TEXT("DEA"), eachKLineData->DEA);
 				klineObject->SetNumberField(TEXT("MACD"), eachKLineData->MACD);
+				klineObject->SetNumberField(TEXT("MACDCombo"), eachKLineData->MACDCombo);
 				klineObject->SetNumberField(TEXT("KDJ_RSV"), eachKLineData->KDJ_RSV);
 				klineObject->SetNumberField(TEXT("KDJ_K"), eachKLineData->KDJ_K);
 				klineObject->SetNumberField(TEXT("KDJ_D"), eachKLineData->KDJ_D);

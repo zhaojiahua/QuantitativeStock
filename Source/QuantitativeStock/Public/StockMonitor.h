@@ -56,7 +56,7 @@ private:
 	void SendHttpRequest(const FString& url);
 	//发送F10财务数据请求
 	void SendHttpRequestForF10(const FString& url);
-	//HTTP响应处理
+	//HTTP响应处理股票实时行情数据
 	void OnResponseReceived(FHttpRequestPtr request, FHttpResponsePtr response, bool successful);
 	//F10财务数据HTTP响应处理
 	void OnResponseReceivedForF10(FHttpRequestPtr request, FHttpResponsePtr response, bool successful);

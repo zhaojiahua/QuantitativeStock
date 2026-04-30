@@ -93,6 +93,29 @@ bool UStockListDownWidget::GetCurrentDownListDatas(TArray<FString>& outListStock
 	return true;
 }
 
+FReply UStockListDownWidget::NativeOnMouseButtonDoubleClick(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent){
+	SetAllScrollItemNoScale();
+	itemRight->SetHidden();
+	itemheight = listScrollBox_->GetParent()->GetChildAt(0)->GetDesiredSize().Y;
+	FVector2D screenPos = InGeometry.AbsoluteToLocal(InMouseEvent.GetScreenSpacePosition());
+	itemindex = FMath::FloorToInt((screenPos.Y + listScrollBox_->GetScrollOffset()) / itemheight);//UE_LOG(LogTemp, Warning, TEXT("itemindex: %d"), itemindex);
+	currentSelectedItemWidget_ = listScrollBox_->GetChildAt(itemindex - 1);
+	SetAllItemOrgColor();//高亮显示之前全部重置颜色
+	if (InMouseEvent.GetEffectingButton() == EKeys::LeftMouseButton) {
+		if (currentSelectedItemWidget_ && companyNameIndexWidget) {//高亮显示
+			UStockListDownItemWidget* currentSelectedItem = Cast<UStockListDownItemWidget>(currentSelectedItemWidget_);
+			if (currentSelectedItem) {
+				companyNameIndexWidget->OnStockCodeTextCommit(currentSelectedItem->GetStockDataCode());
+			}
+			currentSelectedItemWidget_->SetRenderScale(FVector2D(1.05f, 1.05f));
+			Cast<UStockListDownItemWidget>(currentSelectedItemWidget_)->SetItemLightColor();
+		}
+		if (!firstClick) startMove = true;
+		firstClick = false;
+	}
+	return FReply::Handled();
+}
+
 FReply UStockListDownWidget::NativeOnMouseButtonDown(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent){
 	SetAllScrollItemNoScale();
 	itemRight->SetHidden();

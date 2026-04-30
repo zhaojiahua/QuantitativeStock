@@ -93,7 +93,7 @@ public:
 	void LoadIndicatorColorSettingsFromJson_BP(FLinearColor& outColor1, FLinearColor& outColor2, FLinearColor& outColor3, FLinearColor& outColor4);
 	//根据当前的指标名称获取最新一天的技术指标数据
 	UFUNCTION(BlueprintCallable, Category = "QT")
-	bool GetLatestDayIndicators(FLinearColor& outValues)const;
+	bool GetLatestDayIndicators(FVector4& outValues)const;
 
 	//从inVectorCrv[dimension]曲线上均匀采样dataCounts个点,然后绘制曲线在AllottedGeometry上,并且三根曲线的取值范围会作为一个整体缩放到适配AllottedGeometry的大小.
 	TArray<FVector2f>SampleDataFromCurve(UCurveVector* inVectorCrv, const FGeometry& AllottedGeometry, int dimension = 0)const;
@@ -203,7 +203,7 @@ private:
 
 public:
 	//响应公司信息提交的委托
-	void OnCompanyCommitted(const TArray<TSharedPtr<FQTStockIndex>>& inAllRows, bool isLocalData = false);
+	void OnCompanyCommitted(TArray<TSharedPtr<FQTStockIndex>>& inAllRows, bool isLocalData = false);
 	//计算并存储各种技术指标
 	void CaculateAndStoreIndicators(TArray<TSharedPtr<FQTStockIndex>>& allRows);
 	//获取K线浮动窗口,用于模拟交易时显示交易标识

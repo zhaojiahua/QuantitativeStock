@@ -91,15 +91,14 @@ void UQuantitativeTradingCanves::OnIndicatorItemChanged(FName inIndicatorName){
 }
 
 void UQuantitativeTradingCanves::UpdateLatestDayLine(FQTStockRealTimeData inRealTimeData){
-	if (companyNameIndexWidget) {//首先更新companyNameIndexWidget里存储的最新数据和json文件
-		companyNameIndexWidget->UpdateLatestDayLine(inRealTimeData);
-	}
-	//然后更新K线图的最新数据
-	//重新计算最新数据的K线数据和各种指标数据
+	//首先重新计算最新数据的K线数据和各种指标数据
 	ReCaculateAndStoreLatestDayKLine(inRealTimeData);
 	//重新采样最新数据的K线数据和各种指标数据
 	RefreshVisibleRows();
 	SampleDataFromDataTable();
+	if (companyNameIndexWidget) {//然后更新companyNameIndexWidget里存储的最新数据和json文件
+		companyNameIndexWidget->UpdateLatestDayLine(allStockIndexRows);
+	}
 }
 
 void UQuantitativeTradingCanves::LoadCycleSettingsFromJson_BP(int& out1, int& out2, int& out3){
@@ -114,54 +113,56 @@ void UQuantitativeTradingCanves::LoadIndicatorColorSettingsFromJson_BP(FLinearCo
 	LoadIndicatorColorSettingsFromJson(indicatorName.ToString(), outColor1, outColor2, outColor3, outColor4);
 }
 
-bool UQuantitativeTradingCanves::GetLatestDayIndicators(FLinearColor& outValues) const{
+bool UQuantitativeTradingCanves::GetLatestDayIndicators(FVector4& outValues) const{
 	if (allStockIndexRows.IsEmpty())return false;
 	TSharedPtr<FQTStockIndex> latestDayKLine = allStockIndexRows.Last();
 	if (!latestDayKLine.IsValid())return false;
 	if(indicatorName == "Volume") {
-		outValues.R = latestDayKLine->Volume;
-		outValues.G = latestDayKLine->VolumeRatio;
-		outValues.B = latestDayKLine->HistoryVolumeRatio;
+		outValues.X = latestDayKLine->Volume;
+		outValues.Y = latestDayKLine->VolumeRatio;
+		outValues.Z = latestDayKLine->HistoryVolumeRatio;
 		return true;
 	}
 	if(indicatorName == "MACD") {
-		outValues.R = latestDayKLine->DIF;
-		outValues.G = latestDayKLine->DEA;
-		outValues.B = latestDayKLine->MACD;
+		outValues.X = latestDayKLine->DIF;
+		outValues.Y = latestDayKLine->DEA;
+		outValues.Z = latestDayKLine->MACD;
+		outValues.W = (latestDayKLine->MACDCombo + 1000) + (latestDayKLine->DIFDelta + 10.0) / 100.0;//一种简单的编码方式,把MACDCombo和DIFDelta打包成一个参数传递给蓝图,前提是这两个参数的取值范围不大于1000
+		//UE_LOG(LogTemp,Warning,TEXT("---->>MACDCombo: %f"), outValues.W);
 		return true;
 	}
 	if(indicatorName == "KDJ") {
-		outValues.R = latestDayKLine->KDJ_K;
-		outValues.G = latestDayKLine->KDJ_D;
-		outValues.B = latestDayKLine->KDJ_J;
+		outValues.X = latestDayKLine->KDJ_K;
+		outValues.Y = latestDayKLine->KDJ_D;
+		outValues.Z = latestDayKLine->KDJ_J;
 		return true;
 	}
 	if(indicatorName == "BIAS") {
-		outValues.R = latestDayKLine->BIAS0;
-		outValues.G = latestDayKLine->BIAS1;
-		outValues.B = latestDayKLine->BIAS2;
+		outValues.X = latestDayKLine->BIAS0;
+		outValues.Y = latestDayKLine->BIAS1;
+		outValues.Z = latestDayKLine->BIAS2;
 		return true;
 	}
 	if(indicatorName == "RSI") {
-		outValues.R = latestDayKLine->RSI0;
-		outValues.G = latestDayKLine->RSI1;
-		outValues.B = latestDayKLine->RSI2;
+		outValues.X = latestDayKLine->RSI0;
+		outValues.Y = latestDayKLine->RSI1;
+		outValues.Z = latestDayKLine->RSI2;
 		return true;
 	}
 	if(indicatorName=="WR") {
-		outValues.R = latestDayKLine->WR1;
-		outValues.G = latestDayKLine->WR2;
+		outValues.X = latestDayKLine->WR1;
+		outValues.Y = latestDayKLine->WR2;
 		return true;
 	}
 	if (indicatorName=="DMI") {
-		outValues.R = latestDayKLine->PDI;
-		outValues.G = latestDayKLine->NDI;
-		outValues.B = latestDayKLine->ADX;
-		outValues.A = latestDayKLine->ADXR;
+		outValues.X = latestDayKLine->PDI;
+		outValues.Y = latestDayKLine->NDI;
+		outValues.Z = latestDayKLine->ADX;
+		outValues.W = latestDayKLine->ADXR;
 		return true;
 	}
 	if (indicatorName == "CCI") {
-		outValues.R = latestDayKLine->CCI;
+		outValues.X = latestDayKLine->CCI;
 		return true;
 	}
 	return false;
@@ -1035,8 +1036,20 @@ void UQuantitativeTradingCanves::CaculateAndStoreIndicators(TArray<TSharedPtr<FQ
 		allRows[i]->EMA60 = allRows[i - 1]->EMA60 + alpha60 * (allRows[i]->Close - allRows[i - 1]->EMA60);
 		allRows[i]->EMA240 = allRows[i - 1]->EMA240 + alpha240 * (allRows[i]->Close - allRows[i - 1]->EMA240);
 		allRows[i]->DIF = allRows[i]->DIF1 - allRows[i]->DIF2;
+		allRows[i]->DIFDelta = allRows[i]->DIF - allRows[i - 1]->DIF;
 		allRows[i]->DEA = allRows[i - 1]->DEA + alpha9 * (allRows[i]->DIF - allRows[i - 1]->DEA);
 		allRows[i]->MACD = (allRows[i]->DIF - allRows[i]->DEA) * 2.0f;
+		float macdDelta = allRows[i]->MACD - allRows[i - 1]->MACD;
+		if (FMath::Abs(macdDelta) > 0.1f * FMath::Abs(allRows[i - 1]->MACD)) {//macd的涨跌小于10%的时候视作无效
+			if (macdDelta > 0 && allRows[i - 1]->MACDCombo >= 0)allRows[i]->MACDCombo = allRows[i - 1]->MACDCombo + 1;
+			if (macdDelta > 0 && allRows[i - 1]->MACDCombo <= 0)allRows[i]->MACDCombo = 1;
+			if (macdDelta < 0 && allRows[i - 1]->MACDCombo >= 0)allRows[i]->MACDCombo = -1;
+			if (macdDelta < 0 && allRows[i - 1]->MACDCombo <= 0)allRows[i]->MACDCombo = allRows[i - 1]->MACDCombo - 1;
+		}
+		else {//macd的涨跌小于10%的时候视作无效
+			allRows[i]->MACDCombo = allRows[i - 1]->MACDCombo;
+		}
+		//UE_LOG(LogTemp, Warning, TEXT("mainCanvas->CaculateAndStoreIndicators::%dMACDCombo %d"), allRows[i]->Date, allRows[i]->MACDCombo);
 	}
 }
 
@@ -1140,8 +1153,19 @@ void UQuantitativeTradingCanves::ReCaculateSpecifyIndicator(FString inSpecifyNam
 		for (int i = 1; i < allStockIndexRows.Num(); ++i) {
 			allStockIndexRows[i]->DIF1 = allStockIndexRows[i - 1]->DIF1 + dif1Alpha * (allStockIndexRows[i]->Close - allStockIndexRows[i - 1]->DIF1);
 			allStockIndexRows[i]->DIF = allStockIndexRows[i]->DIF1 - allStockIndexRows[i]->DIF2;
+			allStockIndexRows[i]->DIFDelta = allStockIndexRows[i]->DIF - allStockIndexRows[i - 1]->DIF;
 			allStockIndexRows[i]->DEA = allStockIndexRows[i - 1]->DEA + deaAlpha * (allStockIndexRows[i]->DIF - allStockIndexRows[i - 1]->DEA);
 			allStockIndexRows[i]->MACD = (allStockIndexRows[i]->DIF - allStockIndexRows[i]->DEA) * 2.0f;
+			float macdDelta = allStockIndexRows[i]->MACD - allStockIndexRows[i - 1]->MACD;
+			if (FMath::Abs(macdDelta) > 0.1f * FMath::Abs(allStockIndexRows[i - 1]->MACD)) {//macd的涨跌小于5%的时候视作无效
+				if (macdDelta > 0 && allStockIndexRows[i - 1]->MACDCombo >= 0)allStockIndexRows[i]->MACDCombo = allStockIndexRows[i - 1]->MACDCombo + 1;
+				if (macdDelta > 0 && allStockIndexRows[i - 1]->MACDCombo <= 0)allStockIndexRows[i]->MACDCombo = 1;
+				if (macdDelta < 0 && allStockIndexRows[i - 1]->MACDCombo >= 0)allStockIndexRows[i]->MACDCombo = -1;
+				if (macdDelta < 0 && allStockIndexRows[i - 1]->MACDCombo <= 0)allStockIndexRows[i]->MACDCombo = allStockIndexRows[i - 1]->MACDCombo - 1;
+			}
+			else {//macd的涨跌小于5%的时候视作无效
+				allStockIndexRows[i]->MACDCombo = allStockIndexRows[i - 1]->MACDCombo;
+			}
 		}
 		return;
 	}
@@ -1152,8 +1176,19 @@ void UQuantitativeTradingCanves::ReCaculateSpecifyIndicator(FString inSpecifyNam
 		for (int i = 1; i < allStockIndexRows.Num(); ++i) {
 			allStockIndexRows[i]->DIF2 = allStockIndexRows[i - 1]->DIF2 + dif2Alpha * (allStockIndexRows[i]->Close - allStockIndexRows[i - 1]->DIF2);
 			allStockIndexRows[i]->DIF = allStockIndexRows[i]->DIF1 - allStockIndexRows[i]->DIF2;
+			allStockIndexRows[i]->DIFDelta = allStockIndexRows[i]->DIF - allStockIndexRows[i - 1]->DIF;
 			allStockIndexRows[i]->DEA = allStockIndexRows[i - 1]->DEA + deaAlpha * (allStockIndexRows[i]->DIF - allStockIndexRows[i - 1]->DEA);
 			allStockIndexRows[i]->MACD = (allStockIndexRows[i]->DIF - allStockIndexRows[i]->DEA) * 2.0f;
+			float macdDelta = allStockIndexRows[i]->MACD - allStockIndexRows[i - 1]->MACD;
+			if (FMath::Abs(macdDelta) > 0.1f * FMath::Abs(allStockIndexRows[i - 1]->MACD)) {//macd的涨跌小于5%的时候视作无效
+				if (macdDelta > 0 && allStockIndexRows[i - 1]->MACDCombo >= 0)allStockIndexRows[i]->MACDCombo = allStockIndexRows[i - 1]->MACDCombo + 1;
+				if (macdDelta > 0 && allStockIndexRows[i - 1]->MACDCombo <= 0)allStockIndexRows[i]->MACDCombo = 1;
+				if (macdDelta < 0 && allStockIndexRows[i - 1]->MACDCombo >= 0)allStockIndexRows[i]->MACDCombo = -1;
+				if (macdDelta < 0 && allStockIndexRows[i - 1]->MACDCombo <= 0)allStockIndexRows[i]->MACDCombo = allStockIndexRows[i - 1]->MACDCombo - 1;
+			}
+			else {//macd的涨跌小于5%的时候视作无效
+				allStockIndexRows[i]->MACDCombo = allStockIndexRows[i - 1]->MACDCombo;
+			}
 		}
 		return;
 	}
@@ -1163,6 +1198,16 @@ void UQuantitativeTradingCanves::ReCaculateSpecifyIndicator(FString inSpecifyNam
 		for (int i = 1; i < allStockIndexRows.Num(); ++i) {
 			allStockIndexRows[i]->DEA = allStockIndexRows[i - 1]->DEA + deaAlpha * (allStockIndexRows[i]->DIF - allStockIndexRows[i - 1]->DEA);
 			allStockIndexRows[i]->MACD = (allStockIndexRows[i]->DIF - allStockIndexRows[i]->DEA) * 2.0f;
+			float macdDelta = allStockIndexRows[i]->MACD - allStockIndexRows[i - 1]->MACD;
+			if (FMath::Abs(macdDelta) > 0.1f * FMath::Abs(allStockIndexRows[i - 1]->MACD)) {//macd的涨跌小于10%的时候视作无效
+				if (macdDelta > 0 && allStockIndexRows[i - 1]->MACDCombo >= 0)allStockIndexRows[i]->MACDCombo = allStockIndexRows[i - 1]->MACDCombo + 1;
+				if (macdDelta > 0 && allStockIndexRows[i - 1]->MACDCombo <= 0)allStockIndexRows[i]->MACDCombo = 1;
+				if (macdDelta < 0 && allStockIndexRows[i - 1]->MACDCombo >= 0)allStockIndexRows[i]->MACDCombo = -1;
+				if (macdDelta < 0 && allStockIndexRows[i - 1]->MACDCombo <= 0)allStockIndexRows[i]->MACDCombo = allStockIndexRows[i - 1]->MACDCombo - 1;
+			}
+			else {//macd的涨跌小于10%的时候视作无效
+				allStockIndexRows[i]->MACDCombo = allStockIndexRows[i - 1]->MACDCombo;
+			}
 		}
 		return;
 	}
@@ -1448,8 +1493,16 @@ void UQuantitativeTradingCanves::ReCaculateAndStoreLatestDayKLine(const FQTStock
 		allStockIndexRows[i]->DIF1 = allStockIndexRows[i - 1]->DIF1 + dif1Alpha * (allStockIndexRows[i]->Close - allStockIndexRows[i - 1]->DIF1);
 		allStockIndexRows[i]->DIF2 = allStockIndexRows[i - 1]->DIF2 + dif2Alpha * (allStockIndexRows[i]->Close - allStockIndexRows[i - 1]->DIF2);
 		allStockIndexRows[i]->DIF = allStockIndexRows[i]->DIF1 - allStockIndexRows[i]->DIF2;
+		allStockIndexRows[i]->DIFDelta = allStockIndexRows[i]->DIF - allStockIndexRows[i - 1]->DIF;
 		allStockIndexRows[i]->DEA = allStockIndexRows[i - 1]->DEA + deaAlpha * (allStockIndexRows[i]->DIF - allStockIndexRows[i - 1]->DEA);
 		allStockIndexRows[i]->MACD = (allStockIndexRows[i]->DIF - allStockIndexRows[i]->DEA) * 2.0f;
+		float macdDelta = allStockIndexRows[i]->MACD - allStockIndexRows[i - 1]->MACD;
+		if (FMath::Abs(macdDelta) > 0.1f * allStockIndexRows[i - 1]->MACD) {//macd的涨跌小于10%的时候视作无效
+			if (macdDelta > 0 && allStockIndexRows[i - 1]->MACDCombo > 0)allStockIndexRows[i]->MACDCombo += 1;
+			if (macdDelta > 0 && allStockIndexRows[i - 1]->MACDCombo < 0)allStockIndexRows[i]->MACDCombo = 1;
+			if (macdDelta < 0 && allStockIndexRows[i - 1]->MACDCombo > 0)allStockIndexRows[i]->MACDCombo = -1;
+			if (macdDelta < 0 && allStockIndexRows[i - 1]->MACDCombo < 0)allStockIndexRows[i]->MACDCombo -= 1;
+		}
 	}
 	{//更新KDJ
 		LoadCycleSettingsFromJson("KDJ", cycleInfos);//RSV的周期存储在cycleInfos[0]，K值周期存储在cycleInfos[1]，D值周期存储在cycleInfos[2]
@@ -1874,16 +1927,16 @@ void UQuantitativeTradingCanves::BroadcastIndicatorValueRangeByIndicatorName(FNa
 	else if (inIndicatorName == "BIAS")IndicatorValueChangeDelegate.Broadcast(FString::Printf(TEXT("%.2f"), maxBIAS), FString::Printf(TEXT("%.2f"), minBIAS), FString::Printf(TEXT("%.2f"), (maxBIAS + minBIAS) * 0.5f));
 }
 
-void UQuantitativeTradingCanves::OnCompanyCommitted(const TArray<TSharedPtr<FQTStockIndex>>& inAllRows,bool isLocalData){
+void UQuantitativeTradingCanves::OnCompanyCommitted(TArray<TSharedPtr<FQTStockIndex>>& inAllRows,bool isLocalData){
 	allStockIndexRows = inAllRows;
 	//根据startDate和currentDate截取数据
-	if (!inAllRows.IsEmpty()) {
-		//计算并存储各种技术指标(如果不是本地数据,就说明是从网站down下来的新数据,要重新计算一遍技术指标)
-		if (!isLocalData) {
-			UE_LOG(LogTemp, Warning, TEXT("----------------->> 网上荡的新数据,重新计算技术指标"));
-			CaculateAndStoreIndicators(allStockIndexRows);
-		}
-		else { UE_LOG(LogTemp, Warning, TEXT("----------------->> 本地数据有效不用重新计算技术指标")); }
+	if (!allStockIndexRows.IsEmpty()) {
+		////计算并存储各种技术指标(如果不是本地数据,就说明是从网站down下来的新数据,要重新计算一遍技术指标)
+		//if (!isLocalData) {
+		//	UE_LOG(LogTemp, Warning, TEXT("----------------->> 网上荡的新数据,重新计算技术指标"));
+		//	CaculateAndStoreIndicators(allStockIndexRows);
+		//}
+		//else { UE_LOG(LogTemp, Warning, TEXT("----------------->> 本地数据有效不用重新计算技术指标")); }
 		currentDate = allStockIndexRows.Last()->Date;//最新日期
 		if (startDate == 0)startDate = currentDate - 10000;//如果startDate没有被设置过,则默认显示1年的数据
 		GetIntervalRow(allStockIndexRows, visibleRows, startDate, currentDate);

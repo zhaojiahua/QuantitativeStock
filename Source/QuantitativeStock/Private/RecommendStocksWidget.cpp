@@ -616,7 +616,7 @@ float URecommendStocksWidget::AnalyzeIndicatorsForSell(const FString& StockCode,
 	EIndicatorColor VolumeColor = CheckVolumeIndicator(Indicators.HistoryVolumeRatio);
 	Colors.Add(VolumeColor);
 	// MACD
-	EIndicatorColor MACDColor = CheckMACDIndicator(Indicators.MACD);
+	EIndicatorColor MACDColor = CheckMACDIndicator(Indicators.DIF, Indicators.DEA, Indicators.DIFDelta, Indicators.MACD, Indicators.MACDCombo);
 	Colors.Add(MACDColor);
 	// KDJ
 	EIndicatorColor KDJColor = CheckKDJIndicator(Indicators.KDJ_J);
@@ -652,7 +652,7 @@ float URecommendStocksWidget::AnalyzeIndicatorsForSell(const FString& StockCode,
 	// 4. 日志输出
 	UE_LOG(LogTemp, Log, TEXT("=== %s 技术指标分析 ==="), *StockCode);
 	UE_LOG(LogTemp, Log, TEXT("Volume历史百分位: %.2f -> %s"), Indicators.HistoryVolumeRatio, VolumeColor == EIndicatorColor::Red ? TEXT("红灯") : (VolumeColor == EIndicatorColor::Green ? TEXT("绿灯") : TEXT("无灯")));
-	UE_LOG(LogTemp, Log, TEXT("MACD: %.3f -> %s"), Indicators.MACD, MACDColor == EIndicatorColor::Red ? TEXT("红灯") : (MACDColor == EIndicatorColor::Green ? TEXT("绿灯") : TEXT("无灯")));
+	UE_LOG(LogTemp, Log, TEXT("DIFDelta:%f, MACDCombo: %d -> %s"), Indicators.DIFDelta, Indicators.MACDCombo, MACDColor == EIndicatorColor::Red ? TEXT("红灯") : (MACDColor == EIndicatorColor::Green ? TEXT("绿灯") : TEXT("无灯")));
 	UE_LOG(LogTemp, Log, TEXT("KDJ_J: %.2f -> %s"), Indicators.KDJ_J, KDJColor == EIndicatorColor::Red ? TEXT("红灯") : (KDJColor == EIndicatorColor::Green ? TEXT("绿灯") : TEXT("无灯")));
 	UE_LOG(LogTemp, Log, TEXT("RSI: RSI2=%.2f, RSI3=%.2f -> %s"), Indicators.RSI1, Indicators.RSI2, RSIColor == EIndicatorColor::Red ? TEXT("红灯") : (RSIColor == EIndicatorColor::Green ? TEXT("绿灯") : TEXT("无灯")));
 	UE_LOG(LogTemp, Log, TEXT("WR: WR1=%.2f, WR2=%.2f -> %s"), Indicators.WR1, Indicators.WR2, WRColor == EIndicatorColor::Red ? TEXT("红灯") : (WRColor == EIndicatorColor::Green ? TEXT("绿灯") : TEXT("无灯")));
@@ -719,7 +719,7 @@ float URecommendStocksWidget::AnalyzeStockForBuy(FString stockCode, const FQTSto
 	EIndicatorColor VolumeColor = URecommendStocksWidget::CheckVolumeIndicator(Indicators.HistoryVolumeRatio);
 	Colors.Add(VolumeColor);
 	// MACD
-	EIndicatorColor MACDColor = URecommendStocksWidget::CheckMACDIndicator(Indicators.MACD);
+	EIndicatorColor MACDColor = URecommendStocksWidget::CheckMACDIndicator(Indicators.DIF, Indicators.DEA, Indicators.DIFDelta, Indicators.MACD, Indicators.MACDCombo);
 	Colors.Add(MACDColor);
 	// KDJ
 	EIndicatorColor KDJColor = URecommendStocksWidget::CheckKDJIndicator(Indicators.KDJ_J);
@@ -754,7 +754,7 @@ float URecommendStocksWidget::AnalyzeStockForBuy(FString stockCode, const FQTSto
 	// 4. 日志输出
 	UE_LOG(LogTemp, Log, TEXT("=== %s 技术指标分析 ==="), *GetNameCode(stockCode));
 	UE_LOG(LogTemp, Log, TEXT("Volume历史百分位: %.2f -> %s"), Indicators.HistoryVolumeRatio, VolumeColor == EIndicatorColor::Red ? TEXT("红灯") : (VolumeColor == EIndicatorColor::Green ? TEXT("绿灯") : TEXT("无灯")));
-	UE_LOG(LogTemp, Log, TEXT("MACD: %.3f -> %s"), Indicators.MACD, MACDColor == EIndicatorColor::Red ? TEXT("红灯") : (MACDColor == EIndicatorColor::Green ? TEXT("绿灯") : TEXT("无灯")));
+	UE_LOG(LogTemp, Log, TEXT("DIFDelta:%f, MACDCombo: %d -> %s"), Indicators.DIFDelta, Indicators.MACDCombo, MACDColor == EIndicatorColor::Red ? TEXT("红灯") : (MACDColor == EIndicatorColor::Green ? TEXT("绿灯") : TEXT("无灯")));
 	UE_LOG(LogTemp, Log, TEXT("KDJ_J: %.2f -> %s"), Indicators.KDJ_J, KDJColor == EIndicatorColor::Red ? TEXT("红灯") : (KDJColor == EIndicatorColor::Green ? TEXT("绿灯") : TEXT("无灯")));
 	UE_LOG(LogTemp, Log, TEXT("RSI: RSI2=%.2f, RSI3=%.2f -> %s"), Indicators.RSI1, Indicators.RSI2, RSIColor == EIndicatorColor::Red ? TEXT("红灯") : (RSIColor == EIndicatorColor::Green ? TEXT("绿灯") : TEXT("无灯")));
 	UE_LOG(LogTemp, Log, TEXT("WR: WR1=%.2f, WR2=%.2f -> %s"), Indicators.WR1, Indicators.WR2, WRColor == EIndicatorColor::Red ? TEXT("红灯") : (WRColor == EIndicatorColor::Green ? TEXT("绿灯") : TEXT("无灯")));
@@ -814,6 +814,7 @@ bool URecommendStocksWidget::LoadLatestTechnicalIndicators(const FString& StockC
 	LatestKLineObj->TryGetNumberField(TEXT("HistoryVolumeRatio"), klineIndicators.HistoryVolumeRatio);
 	LatestKLineObj->TryGetNumberField(TEXT("HistoryPEPercentile"), klineIndicators.HistoryPEPercentile);
 	LatestKLineObj->TryGetNumberField(TEXT("MACD"), klineIndicators.MACD);
+	LatestKLineObj->TryGetNumberField(TEXT("MACDCombo"), klineIndicators.MACDCombo);
 	LatestKLineObj->TryGetNumberField(TEXT("KDJ_K"), klineIndicators.KDJ_K);
 	LatestKLineObj->TryGetNumberField(TEXT("KDJ_D"), klineIndicators.KDJ_D);
 	LatestKLineObj->TryGetNumberField(TEXT("KDJ_J"), klineIndicators.KDJ_J);
@@ -893,9 +894,9 @@ EIndicatorColor URecommendStocksWidget::CheckVolumeIndicator(float HistoryVolume
 	return EIndicatorColor::None;
 }
 
-EIndicatorColor URecommendStocksWidget::CheckMACDIndicator(float MACD){
-	if (MACD > 0.2f)	return EIndicatorColor::Red;
-	if (MACD < -0.2f)	 return EIndicatorColor::Green;
+EIndicatorColor URecommendStocksWidget::CheckMACDIndicator(float DIF, float DEA, float DIFDelta, float MACD, float macdCombo){
+	if ((MACD > 0 && macdCombo > 9) || (MACD < 0 && macdCombo > 10) || (DIF > DEA && DIFDelta < 0.1 * DIF)) return EIndicatorColor::Red;//水上连涨10天爆红||水下连涨11天爆红||DIF在DEA上翻转
+	if ((MACD > 0 && macdCombo < -10) || (MACD < 0 && macdCombo < -9) || (DIF < DEA && DIFDelta >0.1 * DIF)) return EIndicatorColor::Green;//水上连跌11天爆绿||水下连跌10天爆绿||DIF在DEA下翻转
 	return EIndicatorColor::None;
 }
 
@@ -914,10 +915,10 @@ EIndicatorColor URecommendStocksWidget::CheckRSIIndicator(float RSI2, float RSI3
 }
 
 EIndicatorColor URecommendStocksWidget::CheckWRIndicator(float WR1, float WR2){
-	// WR1和WR2同时大于90闪红灯
-	if (WR1 > 90.0f && WR2 > 90.0f)		return EIndicatorColor::Red;
-	// WR1和WR2同时小于10闪绿灯
-	if (WR1 < 10.0f && WR2 < 10.0f)		return EIndicatorColor::Green;
+	// WR1和WR2同时大于90闪绿灯
+	if (WR1 > 90.0f && WR2 > 90.0f)		return EIndicatorColor::Green;
+	// WR1和WR2同时小于10闪红灯
+	if (WR1 < 10.0f && WR2 < 10.0f)		return EIndicatorColor::Red;
 	return EIndicatorColor::None;
 }
 

@@ -61,7 +61,7 @@ public:
 	bool CheckStockCodeOrNameExist(const FString& stockCodeOrName);
 
 	//更新outKLineDatas_里的最后一天的数据为最新的实时数据(当K线数据的最后一天日期与最新实时数据的日期相同的时候更新最后一天的数据,否则不更新)
-	void UpdateLatestDayLine(const FQTStockRealTimeData& latestDayLineData);
+	void UpdateLatestDayLine(TArray<TSharedPtr<FQTStockIndex>>& latestDayLineData);
 
 	int buyOrSell = 0; //0代表买入,1代表卖出
 

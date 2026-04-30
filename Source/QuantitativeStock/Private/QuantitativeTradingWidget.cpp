@@ -153,7 +153,7 @@ void UQuantitativeTradingWidget::HandleStockDataResponse(const FString& Response
 		}
 		//更新最新数据
 		latestStockDataMap_.Add(stockData.StockCode, stockData);
-		//触发数据更新事件
+		//触发数据更新事件(刷新实时行情数据的UI界面,以及触发刷新反应)
 		onStockRealTimeDataUpdated.Broadcast(stockData);
 		// 打印日志
 		UE_LOG(LogTemp, Log, TEXT("---------------------------->> 股票数据更新: %s %s - 价格: %.2f (%.2f%%)"), *stockData.StockCode, *stockData.StockName, stockData.LatestPrice, stockData.ChangeRatio);
