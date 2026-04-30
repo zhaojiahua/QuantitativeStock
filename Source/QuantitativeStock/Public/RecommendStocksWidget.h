@@ -73,7 +73,7 @@ private:
 	TMap<FString, float> RecommendStocks_;
 	//存放出手股票列表的数组(每只股票对应一个权重,权重值越大越是优先考虑出手的股票,默认权重值是0,权重值小于0的相当于直接筛掉了)
 	TMap<FString, float> RecommendSellStocks_;
-	//存放8大指标灯颜色的数组,每只股票对应一个8个灯的数组,可以用来显示每只股票的技术指标情况
+	//存放8大指标和一个Boll指标9大指标灯颜色的数组,每只股票对应一个9个灯的数组,可以用来显示每只股票的技术指标情况
 	TMap<FString, TArray<EIndicatorColor>> StockIndicatorColors_;
 
 	//股票监控器实例
@@ -132,9 +132,10 @@ public:
 	WR1和WR2同时大于90闪红灯,同时小于10闪绿灯,否则不闪灯;
 	PDI>NDI&&ADX>20闪红灯,NDI>PDI&&ADX>20闪绿灯,否则不闪灯;
 	CCI>100闪红灯,<0闪绿灯,否则不闪灯;
-	BIAS0>3&&BIAS1>5&&BIAS2>10闪红灯,BIAS0<-3&&BIAS1<-5&&BIAS2<-10闪绿灯,否则不闪灯
+	BIAS0>3&&BIAS1>5&&BIAS2>10闪红灯,BIAS0<-3&&BIAS1<-5&&BIAS2<-10闪绿灯,否则不闪灯;
+	当Close接近Boll线上轨时闪红灯,接近Boll线下轨时闪绿灯;
 	----------------------------------------------------------------------------------------------------------
-	8个灯,红灯个数>4的直接筛掉,绿灯个数越多的,推荐权重越大
+	9个灯,红灯个数>4的直接筛掉,绿灯个数越多的,推荐权重越大
 	
 	分析单只股票的推荐出手*/
 	float AnalyzeIndicatorsForSell(const FString& stockCode, const FQTStockIndex& Indicators);
@@ -157,6 +158,7 @@ public:
 	static EIndicatorColor CheckDMIIndicator(float PDI, float NDI, float ADX);
 	static EIndicatorColor CheckCCIIndicator(float CCI);
 	static EIndicatorColor CheckBIASIndicator(float BIAS0, float BIAS1, float BIAS2);
+	static EIndicatorColor CheckBollIndicator(float BollUpper, float BollLower, float Close);
 	// 计算权重
 	static float CalculateWeight(int32 RedLightCount, int32 GreenLightCount);
 	// 计算出手权重

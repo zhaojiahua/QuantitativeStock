@@ -636,6 +636,9 @@ float URecommendStocksWidget::AnalyzeIndicatorsForSell(const FString& StockCode,
 	// BIAS
 	EIndicatorColor BIASColor = CheckBIASIndicator(Indicators.BIAS0, Indicators.BIAS1, Indicators.BIAS2);
 	Colors.Add(BIASColor);
+	//Boll
+	EIndicatorColor BollColor = CheckBollIndicator(Indicators.BollUpper, Indicators.BollLower, Indicators.Close);
+	Colors.Add(BollColor);
 	StockIndicatorColors_.Add(StockCode, Colors);
 
 	// 3. 统计红灯和绿灯个数
@@ -659,6 +662,7 @@ float URecommendStocksWidget::AnalyzeIndicatorsForSell(const FString& StockCode,
 	UE_LOG(LogTemp, Log, TEXT("DMI: PDI=%.2f, NDI=%.2f, ADX=%.2f -> %s"), Indicators.PDI, Indicators.NDI, Indicators.ADX, DMIColor == EIndicatorColor::Red ? TEXT("红灯") : (DMIColor == EIndicatorColor::Green ? TEXT("绿灯") : TEXT("无灯")));
 	UE_LOG(LogTemp, Log, TEXT("CCI: %.2f -> %s"), Indicators.CCI, CCIColor == EIndicatorColor::Red ? TEXT("红灯") : (CCIColor == EIndicatorColor::Green ? TEXT("绿灯") : TEXT("无灯")));
 	UE_LOG(LogTemp, Log, TEXT("BIAS: BIAS0=%.2f, BIAS1=%.2f, BIAS2=%.2f -> %s"), Indicators.BIAS0, Indicators.BIAS1, Indicators.BIAS2, BIASColor == EIndicatorColor::Red ? TEXT("红灯") : (BIASColor == EIndicatorColor::Green ? TEXT("绿灯") : TEXT("无灯")));
+	UE_LOG(LogTemp, Log, TEXT("Boll: BollUpper=%.2f, BollLower=%.2f, Close=%.2f -> %s"), Indicators.BollUpper, Indicators.BollLower, Indicators.Close, BollColor == EIndicatorColor::Red ? TEXT("红灯") : (BollColor == EIndicatorColor::Green ? TEXT("绿灯") : TEXT("无灯")));
 	UE_LOG(LogTemp, Log, TEXT("统计: 红灯=%d, 绿灯=%d"), OutRedLightCount, OutGreenLightCount);
 
 	// 5. 计算权重调整
@@ -739,6 +743,9 @@ float URecommendStocksWidget::AnalyzeStockForBuy(FString stockCode, const FQTSto
 	// BIAS
 	EIndicatorColor BIASColor = URecommendStocksWidget::CheckBIASIndicator(Indicators.BIAS0, Indicators.BIAS1, Indicators.BIAS2);
 	Colors.Add(BIASColor);
+	//Boll
+	EIndicatorColor BollColor = URecommendStocksWidget::CheckBollIndicator(Indicators.BollUpper, Indicators.BollLower, Indicators.Close);
+	Colors.Add(BollColor);
 	StockIndicatorColors_.Add(stockCode, Colors);
 	// 3. 统计红灯和绿灯个数
 	int OutRedLightCount = 0, OutGreenLightCount = 0;
@@ -761,6 +768,7 @@ float URecommendStocksWidget::AnalyzeStockForBuy(FString stockCode, const FQTSto
 	UE_LOG(LogTemp, Log, TEXT("DMI: PDI=%.2f, NDI=%.2f, ADX=%.2f -> %s"), Indicators.PDI, Indicators.NDI, Indicators.ADX, DMIColor == EIndicatorColor::Red ? TEXT("红灯") : (DMIColor == EIndicatorColor::Green ? TEXT("绿灯") : TEXT("无灯")));
 	UE_LOG(LogTemp, Log, TEXT("CCI: %.2f -> %s"), Indicators.CCI, CCIColor == EIndicatorColor::Red ? TEXT("红灯") : (CCIColor == EIndicatorColor::Green ? TEXT("绿灯") : TEXT("无灯")));
 	UE_LOG(LogTemp, Log, TEXT("BIAS: BIAS0=%.2f, BIAS1=%.2f, BIAS2=%.2f -> %s"), Indicators.BIAS0, Indicators.BIAS1, Indicators.BIAS2, BIASColor == EIndicatorColor::Red ? TEXT("红灯") : (BIASColor == EIndicatorColor::Green ? TEXT("绿灯") : TEXT("无灯")));
+	UE_LOG(LogTemp, Log, TEXT("Boll: BollUpper=%.2f, BollLower=%.2f, Close=%.2f -> %s"), Indicators.BollUpper, Indicators.BollLower, Indicators.Close, BollColor == EIndicatorColor::Red ? TEXT("红灯") : (BollColor == EIndicatorColor::Green ? TEXT("绿灯") : TEXT("无灯")));
 	UE_LOG(LogTemp, Log, TEXT("统计: 红灯=%d, 绿灯=%d"), OutRedLightCount, OutGreenLightCount);
 
 	// 5. 计算权重调整
@@ -830,6 +838,9 @@ bool URecommendStocksWidget::LoadLatestTechnicalIndicators(const FString& StockC
 	LatestKLineObj->TryGetNumberField(TEXT("BIAS0"), klineIndicators.BIAS0);
 	LatestKLineObj->TryGetNumberField(TEXT("BIAS1"), klineIndicators.BIAS1);
 	LatestKLineObj->TryGetNumberField(TEXT("BIAS2"), klineIndicators.BIAS2);
+	LatestKLineObj->TryGetNumberField(TEXT("BollUpper"), klineIndicators.BollUpper);
+	LatestKLineObj->TryGetNumberField(TEXT("BollLower"), klineIndicators.BollLower);
+	LatestKLineObj->TryGetNumberField(TEXT("Close"), klineIndicators.Close);
 	return true;
 }
 
@@ -941,6 +952,14 @@ EIndicatorColor URecommendStocksWidget::CheckBIASIndicator(float BIAS0, float BI
 	if (BIAS0 > 3.0f && BIAS1 > 5.0f && BIAS2 > 10.0f)		return EIndicatorColor::Red;
 	// BIAS0 < -3 && BIAS1 < -5 && BIAS2 < -10 闪绿灯
 	if (BIAS0 < -3.0f && BIAS1 < -5.0f && BIAS2 < -10.0f)		return EIndicatorColor::Green;
+	return EIndicatorColor::None;
+}
+
+EIndicatorColor URecommendStocksWidget::CheckBollIndicator(float BollUpper, float BollLower, float Close){
+	float bolllength = BollUpper - BollLower;
+	float closelength = Close - BollLower;
+	if (closelength > 0.9 * bolllength)return EIndicatorColor::Red;
+	if (closelength < 0.1 * bolllength)return EIndicatorColor::Green;
 	return EIndicatorColor::None;
 }
 
