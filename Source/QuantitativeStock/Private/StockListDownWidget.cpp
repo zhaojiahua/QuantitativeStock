@@ -270,7 +270,7 @@ void UStockListDownWidget::SetScrollBoxItemIndex(UWidget* DroppedWidget, int16 n
 	//调整UI显示顺序的同时调整数据顺序
 	if (moveData) {
 		FString fileContent;
-		FString filename = FPaths::ProjectDir() + FString::Printf(TEXT("Saved/StockDatas/%s"), *currentDownListPath);
+		FString filename = FPaths::ProjectSavedDir() / FString::Printf(TEXT("StockDatas/%s"), *currentDownListPath);
 		if (!FFileHelper::LoadFileToString(fileContent, *filename)) { UE_LOG(LogTemp, Warning, TEXT("---------->> %s文档加载失败!"), *currentDownListPath); return; }
 		TSharedPtr<FJsonObject> rootObj;
 		TSharedRef<TJsonReader<>> jsonReader = TJsonReaderFactory<>::Create(fileContent);

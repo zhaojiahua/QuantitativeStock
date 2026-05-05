@@ -87,10 +87,10 @@ public:
 	void UpdateLatestDayLine(FQTStockRealTimeData inRealTimeData);
 	//根据当前的指标名称(IndicatorName)从json文件里读取相应的周期参数（蓝图可调用）
 	UFUNCTION(BlueprintCallable, Category = "QT")
-	void LoadCycleSettingsFromJson_BP(int& out1, int& out2, int& out3);
+	void LoadCycleSettingsFromJson_BP(FString inIndicatorName, int& out1, int& out2, int& out3);
 	//根据当前的指标名称(IndicatorName)从json文件里读取相应的指标颜色参数（蓝图可调用）
 	UFUNCTION(BlueprintCallable, Category = "QT")
-	void LoadIndicatorColorSettingsFromJson_BP(FLinearColor& outColor1, FLinearColor& outColor2, FLinearColor& outColor3, FLinearColor& outColor4);
+	void LoadIndicatorColorSettingsFromJson_BP(FString inIndicatorName, FLinearColor& outColor1, FLinearColor& outColor2, FLinearColor& outColor3, FLinearColor& outColor4);
 	//根据当前的指标名称获取最新一天的技术指标数据
 	UFUNCTION(BlueprintCallable, Category = "QT")
 	bool GetLatestDayIndicators(FVector4& outValues)const;

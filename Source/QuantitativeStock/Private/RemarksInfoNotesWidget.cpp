@@ -6,7 +6,7 @@ bool URemarksInfoNotesWidget::GetNotesFromFile(FString& outNotes){
 		UE_LOG(LogTemp, Warning, TEXT("---------->> 无法加载备注信息: currentCodeName为空"));
 		return false;
 	}
-	FString inFilePath = FPaths::ProjectDir() + FString::Printf(TEXT("Saved/StockDatas/RemarksNotes/%s.json"), *currentCodeName);
+	FString inFilePath = FPaths::ProjectSavedDir() / FString::Printf(TEXT("StockDatas/RemarksNotes/%s.json"), *currentCodeName);
 	FString fileContent{};
 	bool loadsuccuss = FFileHelper::LoadFileToString(fileContent, *inFilePath);
 	if(loadsuccuss) {
@@ -42,7 +42,7 @@ bool URemarksInfoNotesWidget::SaveNotesToFile(const FString& inNotes) {
 		return false;
 	}
 	//先从项目的Saved目录下加载之前保存的备注信息文件，如果存在的话
-	FString noteFilePath = FPaths::ProjectDir() + FString::Printf(TEXT("Saved/StockDatas/RemarksNotes/%s.json"), *currentCodeName);
+	FString noteFilePath = FPaths::ProjectSavedDir() / FString::Printf(TEXT("StockDatas/RemarksNotes/%s.json"), *currentCodeName);
 	FString fileContent{};
 	bool loadsuccuss = FFileHelper::LoadFileToString(fileContent, *noteFilePath);
 	TArray< TSharedPtr <FJsonValue>> rootArray;

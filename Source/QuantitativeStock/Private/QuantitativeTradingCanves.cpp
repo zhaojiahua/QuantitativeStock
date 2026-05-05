@@ -101,16 +101,172 @@ void UQuantitativeTradingCanves::UpdateLatestDayLine(FQTStockRealTimeData inReal
 	}
 }
 
-void UQuantitativeTradingCanves::LoadCycleSettingsFromJson_BP(int& out1, int& out2, int& out3){
+void UQuantitativeTradingCanves::LoadCycleSettingsFromJson_BP(FString inIndicatorName, int& out1, int& out2, int& out3) {
 	int tempint[3];
-	LoadCycleSettingsFromJson(indicatorName.ToString(), tempint);
+	bool loadsuccessful = LoadCycleSettingsFromJson(inIndicatorName, tempint);
+	//如果没有加载成功,说明json文件里没有这个指标的设置,这时候就用默认值,并且把默认值保存到json文件里,以便下次加载成功
+	if(!loadsuccessful){
+		if(inIndicatorName == "Volume") {
+			tempint[0] = 3;
+			tempint[1] = 3;
+			tempint[2] = 3;
+		}
+		else if(inIndicatorName == "MACD") {
+			tempint[0] = 12;
+			tempint[1] = 26;
+			tempint[2] = 9;
+		}
+		else if(inIndicatorName == "KDJ") {
+			tempint[0] = 9;
+			tempint[1] = 3;
+			tempint[2] = 3;
+		}
+		else if(inIndicatorName == "BIAS") {
+			tempint[0] = 6;
+			tempint[1] = 12;
+			tempint[2] = 24;
+		}
+		else if(inIndicatorName == "RSI") {
+			tempint[0] = 14;
+			tempint[1] = 10;
+			tempint[2] = 24;
+		}
+		else if(inIndicatorName =="WR") {
+			tempint[0] = 10;
+			tempint[1] = 6;
+			tempint[2] = 3;
+		}
+		else if (inIndicatorName =="DMI") {
+			tempint[0] = 14;//PDI和NDI的计算周期
+			tempint[1] = 14;//ADX的计算周期
+			tempint[2] = 3;
+		}
+		else if (inIndicatorName == "CCI") {
+			tempint[0] = 20;//CCI的计算周期
+			tempint[1] = 3;
+			tempint[2] = 3;
+		}
+		else {
+			tempint[0] = 3;
+			tempint[1] = 3;
+			tempint[2] = 3;
+		}
+		FString paramFilePath = FPaths::ProjectSavedDir() / FString::Printf(TEXT("StockDatas/IndicatorParams/%s.json"), *inIndicatorName);
+		TSharedPtr<FJsonObject> jsonObject = MakeShareable(new FJsonObject());
+		jsonObject->SetNumberField("Cycle1", tempint[0]);
+		jsonObject->SetNumberField("Cycle2", tempint[1]);
+		jsonObject->SetNumberField("Cycle3", tempint[2]);
+		FString outputString;
+		TSharedRef<TJsonWriter<>> writer = TJsonWriterFactory<>::Create(&outputString);
+		if (FJsonSerializer::Serialize(jsonObject.ToSharedRef(), writer)) {
+			if (FFileHelper::SaveStringToFile(outputString, *paramFilePath)) {
+				UE_LOG(LogTemp, Warning, TEXT("---->> Default cycle settings for %s indicator saved to json file successfully."), *inIndicatorName);
+			}
+			else {
+					UE_LOG(LogTemp, Error, TEXT("---->> Failed to save default cycle settings for %s indicator to json file."), *inIndicatorName);
+			}
+		}
+	}
 	out1 = tempint[0];
 	out2 = tempint[1];
 	out3 = tempint[2];
 }
 
-void UQuantitativeTradingCanves::LoadIndicatorColorSettingsFromJson_BP(FLinearColor& outColor1, FLinearColor& outColor2, FLinearColor& outColor3, FLinearColor& outColor4){
-	LoadIndicatorColorSettingsFromJson(indicatorName.ToString(), outColor1, outColor2, outColor3, outColor4);
+void UQuantitativeTradingCanves::LoadIndicatorColorSettingsFromJson_BP(FString inIndicatorName, FLinearColor& outColor1, FLinearColor& outColor2, FLinearColor& outColor3, FLinearColor& outColor4) {
+	bool loadsuccessful = LoadIndicatorColorSettingsFromJson(inIndicatorName, outColor1, outColor2, outColor3, outColor4);
+	if (!loadsuccessful) {//如果没有加载成功说明没有找到对应的json文件,这时候就用默认颜色,并且把默认颜色保存到json文件里,以便下次加载成功
+		if (inIndicatorName == "Volume") {
+			outColor1 = FLinearColor(0.4, 0.7, 1.0, 1.0);
+			outColor2 = FLinearColor(1.0, 0.7, 0.4, 1.0);
+			outColor3 = FLinearColor(0.9, 0.9, 0.1, 1.0);
+			outColor4 = FLinearColor(0.5, 0.5, 0.0, 1.0);
+		}
+		else if (inIndicatorName == "MACD") {
+			outColor1 = FLinearColor(0.2, 0.2, 0.5, 1.0);
+			outColor2 = FLinearColor(0.5, 0.2, 0.2, 1.0);
+			outColor3 = FLinearColor(0.5, 0.5, 0.0, 1.0);
+			outColor4 = FLinearColor(0.5, 0.5, 0.0, 1.0);
+		}
+		else if (inIndicatorName == "KDJ") {
+			outColor1 = FLinearColor(0.9, 0.6, 0.1, 1.0);
+			outColor2 = FLinearColor(0.1, 0.9, 0.6, 1.0);
+			outColor3 = FLinearColor(0.6, 0.1, 0.9, 1.0);
+			outColor4 = FLinearColor(0.5, 0.5, 0.0, 1.0);
+		}
+		else if (inIndicatorName == "BIAS") {
+			outColor1 = FLinearColor(0.9, 0.1, 0.9, 1.0);
+			outColor2 = FLinearColor(0.1, 0.9, 0.9, 1.0);
+			outColor3 = FLinearColor(0.9, 0.9, 0.1, 1.0);
+			outColor4 = FLinearColor(0.9, 0.9, 0.1, 1.0);
+		}
+		else if (inIndicatorName == "RSI") {
+			outColor1 = FLinearColor(0.9, 0.1, 0.9, 1.0);
+			outColor2 = FLinearColor(0.1, 0.9, 0.9, 1.0);
+			outColor3 = FLinearColor(0.9, 0.9, 0.1, 1.0);
+			outColor4 = FLinearColor(0.5, 0.5, 0.0, 1.0);
+		}
+		else if (inIndicatorName == "WR") {
+			outColor1 = FLinearColor(0.4, 0.7, 1.0, 1.0);
+			outColor2 = FLinearColor(1.0, 0.7, 0.4, 1.0);
+			outColor3 = FLinearColor(0.9, 0.9, 0.1, 1.0);
+			outColor4 = FLinearColor(0.5, 0.5, 0.0, 1.0);
+		}
+		else if (inIndicatorName == "DMI") {
+			outColor1 = FLinearColor(0.9, 0.1, 0.1, 1.0);
+			outColor2 = FLinearColor(0.1, 0.9, 0.1, 1.0);
+			outColor3 = FLinearColor(0.1, 0.1, 0.9, 1.0);
+			outColor4 = FLinearColor(0.9, 0.9, 0.1, 1.0);
+		}
+		else if (inIndicatorName == "CCI") {
+			outColor1 = FLinearColor(0.2, 0.3, 1.0, 1.0);
+			outColor2 = FLinearColor(0.1, 0.9, 0.1, 1.0);
+			outColor3 = FLinearColor(0.1, 0.1, 0.9, 1.0);
+			outColor4 = FLinearColor(0.9, 0.9, 0.1, 1.0);
+		}
+		else {
+			outColor1 = FLinearColor(1.0, 1.0, 1.0, 1.0);
+			outColor2 = FLinearColor(1.0, 1.0, 1.0, 1.0);
+			outColor3 = FLinearColor(1.0, 1.0, 1.0, 1.0);
+			outColor4 = FLinearColor(1.0, 1.0, 1.0, 1.0);
+		}
+		FString paramFilePath = FPaths::ProjectSavedDir() / FString::Printf(TEXT("StockDatas/IndicatorParams/%s_Color.json"), *inIndicatorName);
+		TSharedPtr<FJsonObject> jsonObject = MakeShareable(new FJsonObject());
+		TArray<TSharedPtr<FJsonValue>> color1Array;
+		color1Array.Add(MakeShareable(new FJsonValueNumber(outColor1.R)));
+		color1Array.Add(MakeShareable(new FJsonValueNumber(outColor1.G)));
+		color1Array.Add(MakeShareable(new FJsonValueNumber(outColor1.B)));
+		color1Array.Add(MakeShareable(new FJsonValueNumber(outColor1.A)));
+		jsonObject->SetArrayField("Color1", color1Array);
+		TArray<TSharedPtr<FJsonValue>> color2Array;
+		color2Array.Add(MakeShareable(new FJsonValueNumber(outColor2.R)));
+		color2Array.Add(MakeShareable(new FJsonValueNumber(outColor2.G)));
+		color2Array.Add(MakeShareable(new FJsonValueNumber(outColor2.B)));
+		color2Array.Add(MakeShareable(new FJsonValueNumber(outColor2.A)));
+		jsonObject->SetArrayField("Color2", color2Array);
+		TArray<TSharedPtr<FJsonValue>> color3Array;
+		color3Array.Add(MakeShareable(new FJsonValueNumber(outColor3.R)));
+		color3Array.Add(MakeShareable(new FJsonValueNumber(outColor3.G)));
+		color3Array.Add(MakeShareable(new FJsonValueNumber(outColor3.B)));
+		color3Array.Add(MakeShareable(new FJsonValueNumber(outColor3.A)));
+		jsonObject->SetArrayField("Color3", color3Array);
+		TArray<TSharedPtr<FJsonValue>> color4Array;
+		color4Array.Add(MakeShareable(new FJsonValueNumber(outColor4.R)));
+		color4Array.Add(MakeShareable(new FJsonValueNumber(outColor4.G)));
+		color4Array.Add(MakeShareable(new FJsonValueNumber(outColor4.B)));
+		color4Array.Add(MakeShareable(new FJsonValueNumber(outColor4.A)));
+		jsonObject->SetArrayField("Color4", color4Array);
+
+		FString outputString;
+		TSharedRef<TJsonWriter<>> writer = TJsonWriterFactory<>::Create(&outputString);
+		if (FJsonSerializer::Serialize(jsonObject.ToSharedRef(), writer)) {
+			if (FFileHelper::SaveStringToFile(outputString, *paramFilePath)) {
+				UE_LOG(LogTemp, Warning, TEXT("---->> Default color settings for %s indicator saved to json file successfully."), *inIndicatorName);
+			}
+			else {
+				UE_LOG(LogTemp, Error, TEXT("---->> Failed to save default color settings for %s indicator to json file."), *inIndicatorName);
+			}
+		}
+	}
 }
 
 bool UQuantitativeTradingCanves::GetLatestDayIndicators(FVector4& outValues) const{
@@ -1058,7 +1214,7 @@ TArray<UUserWidget*> UQuantitativeTradingCanves::GetFloatWindWidgets(){
 }
 
 bool UQuantitativeTradingCanves::SaveCycleSettingsToJson(const FString& inSpecifyName, const int cycleInfos[3]){
-	FString paramFilePath = FPaths::ProjectDir() + FString::Printf(TEXT("Saved/StockDatas/IndicatorParams/%s.json"), *indicatorName.ToString());
+	FString paramFilePath = FPaths::ProjectSavedDir() / FString::Printf(TEXT("StockDatas/IndicatorParams/%s.json"), *indicatorName.ToString());
 	TSharedPtr<FJsonObject> jsonObject = MakeShareable(new FJsonObject());
 	int cycleinfosold[3];
 	if (!LoadCycleSettingsFromJson(indicatorName.ToString(), cycleinfosold)) {
@@ -1083,7 +1239,7 @@ bool UQuantitativeTradingCanves::SaveCycleSettingsToJson(const FString& inSpecif
 }
 
 bool UQuantitativeTradingCanves::LoadCycleSettingsFromJson(const FString& inIndicatorName, int cycleInfos[3]) {
-	FString paramFilePath = FPaths::ProjectDir() + FString::Printf(TEXT("Saved/StockDatas/IndicatorParams/%s.json"), *inIndicatorName);
+	FString paramFilePath = FPaths::ProjectSavedDir() / FString::Printf(TEXT("StockDatas/IndicatorParams/%s.json"), *inIndicatorName);
 	FString inputString;
 	if (FFileHelper::LoadFileToString(inputString, *paramFilePath)) {
 		TSharedPtr<FJsonObject> jsonObject;
@@ -1099,7 +1255,7 @@ bool UQuantitativeTradingCanves::LoadCycleSettingsFromJson(const FString& inIndi
 }
 
 bool UQuantitativeTradingCanves::LoadIndicatorColorSettingsFromJson(const FString& inIndicatorName, FLinearColor& outColor1, FLinearColor& outColor2, FLinearColor& outColor3, FLinearColor& outColor4){
-	FString paramFilePath = FPaths::ProjectDir() + FString::Printf(TEXT("Saved/StockDatas/IndicatorParams/%s_Color.json"), *inIndicatorName);
+	FString paramFilePath = FPaths::ProjectSavedDir() / FString::Printf(TEXT("StockDatas/IndicatorParams/%s_Color.json"), *inIndicatorName);
 	FString inputString;
 	if (FFileHelper::LoadFileToString(inputString, *paramFilePath)) {
 		TSharedPtr<FJsonObject> jsonObject;
@@ -1947,7 +2103,7 @@ void UQuantitativeTradingCanves::OnCompanyCommitted(TArray<TSharedPtr<FQTStockIn
 
 bool UQuantitativeTradingCanves::LoadLocalF10Datas(FString stockCode, TArray<FQTFinancialF10Main>& outF10datas){
 	FString fileContent;
-	FString f10filepath = FPaths::ProjectDir() + FString::Printf(TEXT("Saved/StockDatas/KlineDatas/%s/F10.json"), *GetNameCode(stockCode));
+	FString f10filepath = FPaths::ProjectSavedDir() / FString::Printf(TEXT("StockDatas/KlineDatas/%s/F10.json"), *GetNameCode(stockCode));
 	bool loadsuccesful = FFileHelper::LoadFileToString(fileContent, *f10filepath);
 	TSharedRef<TJsonReader<>> jsonReader = TJsonReaderFactory<>::Create(fileContent);
 	TSharedPtr<FJsonObject> jsonObject;

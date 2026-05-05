@@ -138,7 +138,7 @@ private:
 
 	public:
 		//在程序开始的时候获取最近访问的历史数据
-		void GetRecentStockList(const FString& filename);
+		bool GetRecentStockList(const FString& filename);
 		//存储当前下拉列表下的股票
 		TArray<TSharedPtr<FQTStockListRow>> DownStockList_;
 		//发送HTTP请求获取K线数据,只保存到本地json文件,不刷新mainCanvas界面

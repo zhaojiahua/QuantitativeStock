@@ -4,7 +4,7 @@
 #include "CompanyNameIndexWidget.h"
 
 bool URecommendStocksWidget::LoadStocksFromRecentStockListJson(const TArray<FString>& filterChars){
-	FString stockListFilename = FPaths::ProjectDir() + FString::Printf(TEXT("Saved/StockDatas/RecentStockList.json"));
+	FString stockListFilename = FPaths::ProjectSavedDir() / FString::Printf(TEXT("StockDatas/RecentStockList.json"));
 	FString fileContent;
 	bool loadsuccesful = FFileHelper::LoadFileToString(fileContent, *stockListFilename);
 	if (loadsuccesful) {
@@ -35,7 +35,7 @@ bool URecommendStocksWidget::LoadStocksFromRecentStockListJson(const TArray<FStr
 }
 
 bool URecommendStocksWidget::LoadStocksForSellFromJson(FString jsonFileName){
-	FString stockListFilename = FPaths::ProjectDir() + FString::Printf(TEXT("Saved/StockDatas/%s"), *jsonFileName);
+	FString stockListFilename = FPaths::ProjectSavedDir() / FString::Printf(TEXT("StockDatas/%s"), *jsonFileName);
 	FString fileContent;
 	bool loadsuccesful = FFileHelper::LoadFileToString(fileContent, *stockListFilename);
 	if (loadsuccesful) {
@@ -161,7 +161,7 @@ void URecommendStocksWidget::HandleF10DataResponse(const FString& responseData, 
 		TSharedRef<TJsonWriter<>> jsonWriter = TJsonWriterFactory<>::Create(&outputString);
 		if (FJsonSerializer::Serialize(jsonObjectForWrite.ToSharedRef(), jsonWriter)) {
 			TSharedPtr<FQTStockListRow>  tempStockListRow = companyNameIndexWidgetBP->GetFQTStockListRowByCodeOrName(F10Datas_[0].SECURITY_CODE);
-			FString f10Path= FPaths::ProjectDir() + FString::Printf(TEXT("Saved/StockDatas/KlineDatas/%s/F10.json"), *(tempStockListRow->NAMECODE));
+			FString f10Path= FPaths::ProjectSavedDir() / FString::Printf(TEXT("StockDatas/KlineDatas/%s/F10.json"), *(tempStockListRow->NAMECODE));
 			if (FFileHelper::SaveStringToFile(outputString, *f10Path)) {
 				UE_LOG(LogTemp, Warning, TEXT("---------->> 股票F10数据已成功保存到本地文件: %s"), *f10Path);
 				PlusGetF10Counts();
@@ -244,7 +244,7 @@ bool URecommendStocksWidget::NeedToDownLoadKLineFromInternet(FString stockCode) 
 
 bool URecommendStocksWidget::LoadLocalKLineData(FString stockCode, TSharedPtr<FJsonObject>& outJsonObj){
 	FString fileContent;
-	FString klinefilepath = FPaths::ProjectDir() + FString::Printf(TEXT("Saved/StockDatas/KlineDatas/%s/Kline101.json"), *GetNameCode(stockCode));
+	FString klinefilepath = FPaths::ProjectSavedDir() / FString::Printf(TEXT("StockDatas/KlineDatas/%s/Kline101.json"), *GetNameCode(stockCode));
 	bool loadsuccesful = FFileHelper::LoadFileToString(fileContent, *klinefilepath);
 	if (!loadsuccesful) {//如果加载失败返回false
 		return false;
@@ -281,7 +281,7 @@ bool URecommendStocksWidget::NeedToDownLoadF10FromInternet(FString stockCode){
 
 bool URecommendStocksWidget::LoadLocalF10Data(FString stockCode, TSharedPtr<FJsonObject>& outJsonObj){
 	FString fileContent;
-	FString f10filepath = FPaths::ProjectDir() + FString::Printf(TEXT("Saved/StockDatas/KlineDatas/%s/F10.json"), *GetNameCode(stockCode));
+	FString f10filepath = FPaths::ProjectSavedDir() / FString::Printf(TEXT("StockDatas/KlineDatas/%s/F10.json"), *GetNameCode(stockCode));
 	bool loadsuccesful = FFileHelper::LoadFileToString(fileContent, *f10filepath);
 	if (!loadsuccesful) {//如果加载失败返回false
 		return false;
@@ -516,7 +516,7 @@ float URecommendStocksWidget::GetEPSByDate(const TArray<TSharedPtr<FJsonValue>>*
 FString URecommendStocksWidget::GetBusinessDescription(FString stockCode){
 	FString fileContent;
 	TSharedPtr<FQTStockListRow>  tempStockListRow = companyNameIndexWidgetBP->GetFQTStockListRowByCodeOrName(stockCode);//根据股票代码获取对应的本地文件路径
-	FString introductionfilepath = FPaths::ProjectDir() + FString::Printf(TEXT("Saved/StockDatas/KlineDatas/%s/Introduction.json"), *GetNameCode(stockCode));
+	FString introductionfilepath = FPaths::ProjectSavedDir() / FString::Printf(TEXT("StockDatas/KlineDatas/%s/Introduction.json"), *GetNameCode(stockCode));
 	bool loadsuccesful = FFileHelper::LoadFileToString(fileContent, *introductionfilepath);
 	if (!loadsuccesful) {
 		UE_LOG(LogTemp, Warning, TEXT("GetBusinessDescription: %s公司简介加载失败"), *GetNameCode(stockCode)); 
@@ -782,7 +782,7 @@ float URecommendStocksWidget::AnalyzeStockForBuy(FString stockCode, const FQTSto
 
 bool URecommendStocksWidget::LoadLatestTechnicalIndicators(const FString& StockCode, FQTStockIndex& klineIndicators){
 	// 构建K线文件路径
-	FString KLineFilePath = FPaths::ProjectDir() + FString::Printf(TEXT("Saved/StockDatas/KlineDatas/%s/Kline101.json"), *GetNameCode(StockCode));
+	FString KLineFilePath = FPaths::ProjectSavedDir() / FString::Printf(TEXT("StockDatas/KlineDatas/%s/Kline101.json"), *GetNameCode(StockCode));
 	if (!FPaths::FileExists(KLineFilePath)){
 		UE_LOG(LogTemp, Warning, TEXT("Kline101文件不存在: %s"), *KLineFilePath);
 		return false;
@@ -846,7 +846,7 @@ bool URecommendStocksWidget::LoadLatestTechnicalIndicators(const FString& StockC
 
 bool URecommendStocksWidget::LoadLatestF10Datas(const FString& stockCode, FQTFinancialF10Main& f10Datas){
 	// 构建K线文件路径
-	FString f10FilePath = FPaths::ProjectDir() + FString::Printf(TEXT("Saved/StockDatas/KlineDatas/%s/F10.json"), *GetNameCode(stockCode));
+	FString f10FilePath = FPaths::ProjectSavedDir() / FString::Printf(TEXT("StockDatas/KlineDatas/%s/F10.json"), *GetNameCode(stockCode));
 	if (!FPaths::FileExists(f10FilePath)) {
 		UE_LOG(LogTemp, Warning, TEXT("URecommendStocksWidget::LoadLatestF10Datas::F10文件不存在: %s"), *f10FilePath);
 		return false;

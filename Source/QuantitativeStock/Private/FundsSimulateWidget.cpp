@@ -83,7 +83,7 @@ TArray<int> UFundsSimulateWidget::GetTradingDatesFromStartDate(int startDate){
 	TArray<FString>tempStocks;
 	if (LoadListStocks(tempStocks) && tempStocks.Num() > 0) {
 		FString fileContent;
-		FString klinefilepath = FPaths::ProjectDir() + FString::Printf(TEXT("Saved/StockDatas/KlineDatas/%s/Kline101.json"), *GetNameCode(tempStocks[0]));
+		FString klinefilepath = FPaths::ProjectSavedDir() / FString::Printf(TEXT("StockDatas/KlineDatas/%s/Kline101.json"), *GetNameCode(tempStocks[0]));
 		//加载K线数据
 		if (FFileHelper::LoadFileToString(fileContent, *klinefilepath)) {
 			TSharedPtr<FJsonObject> jsonObject;
@@ -154,7 +154,7 @@ void UFundsSimulateWidget::CalculateRecommendedStocks(int inDate, float inBalanc
 
 bool UFundsSimulateWidget::LoadStockKLineData(FString stockCode, int inDate, FQTStockIndex& outKLineData){
 	FString fileContent;
-	FString klinefilepath = FPaths::ProjectDir() + FString::Printf(TEXT("Saved/StockDatas/KlineDatas/%s/Kline101.json"), *GetNameCode(stockCode));
+	FString klinefilepath = FPaths::ProjectSavedDir() / FString::Printf(TEXT("StockDatas/KlineDatas/%s/Kline101.json"), *GetNameCode(stockCode));
 	//加载K线数据
 	if (FFileHelper::LoadFileToString(fileContent, *klinefilepath)) {
 		TSharedPtr<FJsonObject> jsonObject;
@@ -207,7 +207,7 @@ bool UFundsSimulateWidget::LoadStockKLineData(FString stockCode, int inDate, FQT
 
 bool UFundsSimulateWidget::LoadStockF10Data(FString stockCode, int inDate, FQTFinancialF10Main& outF10Data){
 	FString fileContent;
-	FString f10filepath = FPaths::ProjectDir() + FString::Printf(TEXT("Saved/StockDatas/KlineDatas/%s/F10.json"), *GetNameCode(stockCode));
+	FString f10filepath = FPaths::ProjectSavedDir() / FString::Printf(TEXT("StockDatas/KlineDatas/%s/F10.json"), *GetNameCode(stockCode));
 	//加载F10数据
 	if (FFileHelper::LoadFileToString(fileContent, *f10filepath)) {
 		TSharedPtr<FJsonObject> jsonObject;
@@ -250,7 +250,7 @@ FString UFundsSimulateWidget::GetNameCode(FString stockCode) {
 }
 
 bool UFundsSimulateWidget::LoadListStocks(TArray<FString>& outStocks){
-	FString stockListFilename = FPaths::ProjectDir() + FString("Saved/StockDatas/RecentStockList.json");
+	FString stockListFilename = FPaths::ProjectSavedDir() / FString("StockDatas/RecentStockList.json");
 	FString fileContent;
 	bool loadsuccesful = FFileHelper::LoadFileToString(fileContent, *stockListFilename);
 	if (loadsuccesful) {

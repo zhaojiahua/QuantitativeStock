@@ -15,7 +15,7 @@ void UCompanyNameIndexWidget::GetIntroductionByCodeOrName(FString codeOrName){
 		TSharedPtr<FQTStockListRow> sourcecode = *sourcecodeptr;
 		//文件格式: 公司简称+股票代码,例如: 贵州茅台600519(如果公司简称有*号开头,则替换为^号)
 		FString companynamecode = sourcecode->NAMECODE.Replace(TEXT("*"), TEXT("^"));
-		currentFilename_ = FPaths::ProjectDir() + FString::Printf(TEXT("Saved/StockDatas/KlineDatas/%s/Kline101.json"), *companynamecode);
+		currentFilename_ = FPaths::ProjectSavedDir() / FString::Printf(TEXT("StockDatas/KlineDatas/%s/Kline101.json"), *companynamecode);
 		FString IntroductionPath = currentFilename_.Replace(TEXT("Kline101"), TEXT("Introduction"));
 		FString fileContent;
 		bool loadsuccesful = FFileHelper::LoadFileToString(fileContent, *IntroductionPath);
@@ -93,7 +93,7 @@ void UCompanyNameIndexWidget::SaveDownListStocksBP(const FString& codeOrName, co
 
 void UCompanyNameIndexWidget::SaveToRecentListPathBP(const FString& codeOrName){
 	FString fileContent;
-	FString recentFilename = FPaths::ProjectDir() + FString("Saved/StockDatas/RecentStockList.json");
+	FString recentFilename = FPaths::ProjectSavedDir() / FString("StockDatas/RecentStockList.json");
 	if (FFileHelper::LoadFileToString(fileContent, *recentFilename)) {
 		TSharedPtr<FJsonObject> rootObj;
 		TSharedRef<TJsonReader<>> jsonReader = TJsonReaderFactory<>::Create(fileContent);
@@ -147,24 +147,24 @@ void UCompanyNameIndexWidget::SavePreStockDownListDatasFromDownListWidget(const 
 }
 
 void UCompanyNameIndexWidget::GetStockDownListDatas(const FString& savedFile){
-	GetRecentStockList(savedFile);
+	if (!GetRecentStockList(savedFile))return;
 	if (stockMonitor_ && DownStockList_.Num()>0) {
 		TArray<FString> codes;
 		for (const auto& item : DownStockList_) {
 			codes.Add(item->CODE);
 		}
-		//stockMonitor_->GetStocksDatas(codes);
-		{//测试用,实际应该从网站获取最新数据,避免频繁请求网站
-			listStocksDatas_.Empty();
-			for (auto& item : DownStockList_) {
-				FQTStockRealTimeData stockData;
-				stockData.StockCode = item->CODE;
-				stockData.StockName = item->NAME;
-				stockData.LatestPrice = FMath::FRandRange(5.0, 10.0);
-				listStocksDatas_.Add(stockData);
-			}
-			stockListDownWidgetBP->UpdateStockListDatas(listStocksDatas_);
-		}
+		stockMonitor_->GetStocksDatas(codes);
+		//{//测试用,实际应该从网站获取最新数据,避免频繁请求网站
+		//	listStocksDatas_.Empty();
+		//	for (auto& item : DownStockList_) {
+		//		FQTStockRealTimeData stockData;
+		//		stockData.StockCode = item->CODE;
+		//		stockData.StockName = item->NAME;
+		//		stockData.LatestPrice = FMath::FRandRange(5.0, 10.0);
+		//		listStocksDatas_.Add(stockData);
+		//	}
+		//	stockListDownWidgetBP->UpdateStockListDatas(listStocksDatas_);
+		//}
 	}
 }
 
@@ -851,7 +851,7 @@ void UCompanyNameIndexWidget::OnKLineDataRequestCompleteJustSave(FHttpRequestPtr
 			TSharedRef<TJsonWriter<>> jsonWriter = TJsonWriterFactory<>::Create(&outputString);
 			if (FJsonSerializer::Serialize(jsonObject.ToSharedRef(), jsonWriter)) {
 				TSharedPtr<FQTStockListRow>  tempStockListRow = GetFQTStockListRowByCodeOrName(forSaveKLineDatas.Last()->IndexCode);//根据股票代码获取对应的本地文件路径
-				FString klinePath = FPaths::ProjectDir() + FString::Printf(TEXT("Saved/StockDatas/KlineDatas/%s/Kline101.json"), *(tempStockListRow->NAMECODE));
+				FString klinePath = FPaths::ProjectSavedDir() / FString::Printf(TEXT("StockDatas/KlineDatas/%s/Kline101.json"), *(tempStockListRow->NAMECODE));
 				if (FFileHelper::SaveStringToFile(outputString, *klinePath)) {
 					UE_LOG(LogTemp, Warning, TEXT("---------->> 股票日线数据已成功保存到本地文件: %s"), *klinePath);
 					if (onFetchKLineDataToSave.IsBound())onFetchKLineDataToSave.Broadcast(buyOrSell);
@@ -868,7 +868,7 @@ void UCompanyNameIndexWidget::OnStockListDataRequestComplete(FHttpRequestPtr Req
 	if (bWasSuccessful && Response.IsValid()) {
 		FString responseString = Response->GetContentAsString();
 		//将数据保存到本地文件
-		FString stockListFilename = FPaths::ProjectDir() + FString::Printf(TEXT("Saved/StockDatas/StockList.json"));
+		FString stockListFilename = FPaths::ProjectSavedDir() / FString::Printf(TEXT("StockDatas/StockList.json"));
 		if (ParseStockListDataResponse(responseString, StockRowListMap_)) {
 			UE_LOG(LogTemp, Warning, TEXT("---------->> 股票列表数据获取成功,正在保存到本地文件..."));
 			TSharedPtr<FJsonObject> jsonObject = MakeShareable(new FJsonObject());//根对象
@@ -907,7 +907,7 @@ void UCompanyNameIndexWidget::OnFundListDataRequestComplete(FHttpRequestPtr Requ
 	if (bWasSuccessful && Response.IsValid()) {
 		FString responseString = Response->GetContentAsString();
 		//将数据保存到本地文件
-		FString fundListFilename = FPaths::ProjectDir() + FString::Printf(TEXT("Saved/StockDatas/FundList.json"));
+		FString fundListFilename = FPaths::ProjectSavedDir() / FString::Printf(TEXT("StockDatas/FundList.json"));
 		if (ParseFundListDataResponse(responseString, FundRowListMap_)) {
 			UE_LOG(LogTemp, Warning, TEXT("---------->> 基金列表数据获取成功,正在保存到本地文件..."));
 			TSharedPtr<FJsonObject> jsonObject = MakeShareable(new FJsonObject());//根对象
@@ -1010,7 +1010,7 @@ void UCompanyNameIndexWidget::FetchKLineData(const FString& StockCode, int inklt
 
 void UCompanyNameIndexWidget::FetchStockListData(){
 	FString fileContent;
-	FString stockListFilename = FPaths::ProjectDir() + FString::Printf(TEXT("Saved/StockDatas/StockList.json"));
+	FString stockListFilename = FPaths::ProjectSavedDir() / FString::Printf(TEXT("StockDatas/StockList.json"));
 	bool loadsuccesful = FFileHelper::LoadFileToString(fileContent, *stockListFilename);
 	if (loadsuccesful) {//如果文件存在,就直接加载
 		//检查文件的存储日期,如果超过一天没更新,就重新从网站获取股票列表数据并保存到本地文件
@@ -1067,7 +1067,7 @@ void UCompanyNameIndexWidget::FetchStockListData(){
 
 void UCompanyNameIndexWidget::FetchFundListData() {
 	FString fileContent;
-	FString fundListFilename = FPaths::ProjectDir() + FString::Printf(TEXT("Saved/StockDatas/FundList.json"));
+	FString fundListFilename = FPaths::ProjectSavedDir() / FString::Printf(TEXT("StockDatas/FundList.json"));
 	bool loadsuccesful = FFileHelper::LoadFileToString(fileContent, *fundListFilename);
 	if (loadsuccesful) {//如果文件存在,就直接加载
 		//检查文件的存储日期,如果超过一天没更新,就重新从网站获取基金列表数据并保存到本地文件
@@ -1188,9 +1188,9 @@ void UCompanyNameIndexWidget::SendHttpRequestJustSave(FString url){
 	}
 }
 
-void UCompanyNameIndexWidget::GetRecentStockList(const FString& filename){
+bool UCompanyNameIndexWidget::GetRecentStockList(const FString& filename){
 	FString fileContent;
-	FString recentFilename = FPaths::ProjectDir() + FString::Printf(TEXT("Saved/StockDatas/%s"), *filename);
+	FString recentFilename = FPaths::ProjectSavedDir() / FString::Printf(TEXT("StockDatas/%s"), *filename);
 	bool loadsuccesful = FFileHelper::LoadFileToString(fileContent, *recentFilename);
 	if (loadsuccesful && stockListDownWidgetBP) {
 		DownStockList_.Empty();
@@ -1199,16 +1199,18 @@ void UCompanyNameIndexWidget::GetRecentStockList(const FString& filename){
 		TSharedRef<TJsonReader<>> jsonReader = TJsonReaderFactory<>::Create(fileContent);
 		if (FJsonSerializer::Deserialize(jsonReader, rootObj) && rootObj.IsValid()) {
 			TArray< TSharedPtr <FJsonValue>> recentStocks = rootObj->GetArrayField(TEXT("StockList"));
-			if (recentStocks.IsEmpty()) { UE_LOG(LogTemp, Error, TEXT("---------->> %s的StockList为空!"), *filename); return; }
+			if (recentStocks.IsEmpty()) { UE_LOG(LogTemp, Error, TEXT("---------->> %s的StockList为空!"), *filename); return false; }
 			for (auto& stock : recentStocks) {
 				TSharedPtr<FJsonObject> jsonObj = stock->AsObject();
 				TSharedPtr<FQTStockListRow>* sourcecodeptr = StockRowListMap_.Find(jsonObj->GetStringField(TEXT("CODE")));
 				DownStockList_.Add(*sourcecodeptr);
 			}
+			return true;
 		}
 		else UE_LOG(LogTemp, Error, TEXT("---------->> %s历史数据反序列化失败!"), *filename);
 	}
 	else UE_LOG(LogTemp, Error, TEXT("---------->> 读取%s历史失败! stockListDownWidgetBP 可能为空"), *filename);
+	return false;
 }
 
 void UCompanyNameIndexWidget::SaveRecentStockList(const FString& filename){
@@ -1225,7 +1227,7 @@ void UCompanyNameIndexWidget::SaveRecentStockList(const FString& filename){
 		jsonArray.Add(MakeShared<FJsonValueObject>(tempobj));
 	}
 	writeRootObject->SetArrayField(TEXT("StockList"), jsonArray);
-	FString recentFilename = FPaths::ProjectDir() + FString::Printf(TEXT("Saved/StockDatas/%s"), *filename);
+	FString recentFilename = FPaths::ProjectSavedDir() / FString::Printf(TEXT("StockDatas/%s"), *filename);
 	FString outputString;
 	TSharedRef<TJsonWriter<>> jsonWriter = TJsonWriterFactory<>::Create(&outputString);
 	if (FJsonSerializer::Serialize(writeRootObject.ToSharedRef(), jsonWriter)) {

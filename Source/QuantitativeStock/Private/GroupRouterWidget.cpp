@@ -32,7 +32,7 @@ TSharedPtr<FQTStockListRow> UGroupRouterWidget::GetPathStockListItem(const FStri
 bool UGroupRouterWidget::SaveItemToListPath(const FString& inFileName, TSharedPtr<FQTStockListRow>inItem){
 	if (!inItem.IsValid() || inItem == nullptr)return false;
 	FString fileContent;
-	FString filename = FPaths::ProjectDir() + FString::Printf(TEXT("Saved/StockDatas/%s"), *inFileName);
+	FString filename = FPaths::ProjectSavedDir() / FString::Printf(TEXT("StockDatas/%s"), *inFileName);
 	bool loadsuccesful = FFileHelper::LoadFileToString(fileContent, *filename);
 	if (!loadsuccesful)return false;
 	TSharedPtr<FJsonObject> rootObj;
