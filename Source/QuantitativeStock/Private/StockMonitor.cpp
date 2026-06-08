@@ -447,7 +447,7 @@ bool UStockMonitor::ParseTencentResponse(const FString& responseData, TArray<FQT
 		TArray<FString> dataParts;
 		dataContent.ParseIntoArray(dataParts, TEXT("~"));
 		FQTStockRealTimeData outRealTimeData;
-		if (dataParts.Num() >= 40) {
+		if (dataParts.Num() > 40) {
 			outRealTimeData.StockCode = dataParts[2];
 			outRealTimeData.StockName = dataParts[1];
 			outRealTimeData.LatestPrice = FCString::Atof(*dataParts[3]);

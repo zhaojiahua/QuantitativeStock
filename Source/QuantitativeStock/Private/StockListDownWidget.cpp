@@ -26,8 +26,8 @@ void UStockListDownWidget::SortDownListItems(int inIndex, int ascending){
 	UE_LOG(LogTemp, Warning, TEXT("--------------------->>inIndex %d, ascending %d"), inIndex, ascending);
 	if(ascending == 0) {
 		//恢复排序之前的顺序
-		listScrollBox_->ClearChildren();
 		if (originalDownListItems.IsEmpty()) { UE_LOG(LogTemp, Warning, TEXT("--------------------->>originalDownListItems.IsEmpty()")); return; }
+		listScrollBox_->ClearChildren();
 		for (auto item : originalDownListItems) {
 			listScrollBox_->AddChild(item);
 		}

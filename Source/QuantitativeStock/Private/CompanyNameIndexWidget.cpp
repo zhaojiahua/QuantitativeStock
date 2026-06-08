@@ -132,7 +132,7 @@ void UCompanyNameIndexWidget::SaveToRecentListPathBP(const FString& codeOrName){
 }
 
 void UCompanyNameIndexWidget::SavePreStockDownListDatasFromDownListWidget(const FString& savedFile){
-	if (savedFile == "RecentStockList.json" || savedFile == "Null")return;
+	if (savedFile == "Null")return;
 	TArray<FString> currentDownListDatas_JustCode;
 	if (stockListDownWidgetBP && stockListDownWidgetBP->GetCurrentDownListDatas(currentDownListDatas_JustCode)) {
 		DownStockList_.Empty();
@@ -153,18 +153,18 @@ void UCompanyNameIndexWidget::GetStockDownListDatas(const FString& savedFile){
 		for (const auto& item : DownStockList_) {
 			codes.Add(item->CODE);
 		}
-		stockMonitor_->GetStocksDatas(codes);
-		//{//测试用,实际应该从网站获取最新数据,避免频繁请求网站
-		//	listStocksDatas_.Empty();
-		//	for (auto& item : DownStockList_) {
-		//		FQTStockRealTimeData stockData;
-		//		stockData.StockCode = item->CODE;
-		//		stockData.StockName = item->NAME;
-		//		stockData.LatestPrice = FMath::FRandRange(5.0, 10.0);
-		//		listStocksDatas_.Add(stockData);
-		//	}
-		//	stockListDownWidgetBP->UpdateStockListDatas(listStocksDatas_);
-		//}
+		//stockMonitor_->GetStocksDatas(codes);
+		{//测试用,实际应该从网站获取最新数据,避免频繁请求网站
+			listStocksDatas_.Empty();
+			for (auto& item : DownStockList_) {
+				FQTStockRealTimeData stockData;
+				stockData.StockCode = item->CODE;
+				stockData.StockName = item->NAME;
+				stockData.LatestPrice = FMath::FRandRange(5.0, 10.0);
+				listStocksDatas_.Add(stockData);
+			}
+			stockListDownWidgetBP->UpdateStockListDatas(listStocksDatas_);
+		}
 	}
 }
 
